@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Search, FileText, Download, Trash2, BarChart3, Filter, X, Loader2, Users } from "lucide-react"
+import { ArrowLeft, Search, FileText, Download, Trash2, BarChart3, Filter, X, Loader2, Users, Database } from "lucide-react"
 import supabase from "@/lib/supabase"
 import EditVoucherModal from "@/components/history/EditVoucherModal"
 import VoucherFilters from "@/components/history/VoucherFilters"
@@ -1347,6 +1347,15 @@ export default function HistoryPage() {
                   >
                     <BarChart3 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/master")}
+                    variant="outline"
+                    size="sm"
+                    className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm"
+                  >
+                    <Database className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Master
                   </Button>
                   <Button
                     onClick={() => router.push("/users")}

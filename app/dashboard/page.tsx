@@ -20,6 +20,7 @@ import {
   History,
   Loader2,
   Users,
+  Database,
 } from "lucide-react"
 import supabase from "@/lib/supabase"
 
@@ -273,15 +274,26 @@ export default function DashboardPage() {
                 History
               </Button>
               {userRole.toLowerCase() === "admin" && (
-                <Button
-                  onClick={() => router.push("/users")}
-                  variant="outline"
-                  size="sm"
-                  className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 text-xs sm:text-sm flex-1 sm:flex-none"
-                >
-                  <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  Users
-                </Button>
+                <>
+                  <Button
+                    onClick={() => router.push("/master")}
+                    variant="outline"
+                    size="sm"
+                    className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs sm:text-sm flex-1 sm:flex-none"
+                  >
+                    <Database className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Master
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/users")}
+                    variant="outline"
+                    size="sm"
+                    className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 text-xs sm:text-sm flex-1 sm:flex-none"
+                  >
+                    <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    Users
+                  </Button>
+                </>
               )}
               <Button
                 onClick={handleLogout}

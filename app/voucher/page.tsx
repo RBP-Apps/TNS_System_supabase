@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-import { LogOut, History, Save, Building2, BarChart3, Users } from "lucide-react"
+import { LogOut, History, Save, Building2, BarChart3, Users, Database } from "lucide-react"
 
 import jsPDF from "jspdf"
 
@@ -1581,6 +1581,14 @@ export default function VoucherPage() {
                   >
                     <BarChart3 className="mr-2 h-4 w-4" />
                     Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/master")}
+                    variant="outline"
+                    className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 text-sm md:text-base"
+                  >
+                    <Database className="mr-2 h-4 w-4" />
+                    Master
                   </Button>
                   <Button
                     onClick={() => router.push("/users")}

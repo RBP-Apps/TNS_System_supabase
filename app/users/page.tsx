@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { Search, X, Users, UserPlus, LogOut, ArrowLeft } from "lucide-react"
+import { Search, X, Users, UserPlus, LogOut, ArrowLeft, Database } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import supabase from "@/lib/supabase"
@@ -225,10 +225,18 @@ export default function UserRegistration() {
               <Button
                 onClick={() => router.push("/dashboard")}
                 variant="outline"
-                className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
+                Dashboard
+              </Button>
+              <Button
+                onClick={() => router.push("/master")}
+                variant="outline"
+                className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+              >
+                <Database className="mr-2 h-4 w-4" />
+                Master
               </Button>
               <Button
                 onClick={handleLogout}
