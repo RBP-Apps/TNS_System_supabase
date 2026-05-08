@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import type React from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -51,17 +51,39 @@ interface MasterData {
   projects: string[]
   bankAccounts: string[]
   uniqueNames: string[]
+  purposes: string[]
+}
+
+// Pure helper — outside component so it is never re-created on each render
+const convertNumberToWords = (num: number): string => {
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
+  const teens = ["Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"]
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
+  if (num === 0) return "Zero"
+  if (num < 10) return ones[num]
+  if (num < 20) return teens[num - 10]
+  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? " " + ones[num % 10] : "")
+  if (num < 1000) return ones[Math.floor(num / 100)] + " Hundred" + (num % 100 ? " " + convertNumberToWords(num % 100) : "")
+  if (num < 100000) return convertNumberToWords(Math.floor(num / 1000)) + " Thousand" + (num % 1000 ? " " + convertNumberToWords(num % 1000) : "")
+  if (num < 10000000) return convertNumberToWords(Math.floor(num / 100000)) + " Lakh" + (num % 100000 ? " " + convertNumberToWords(num % 100000) : "")
+  return convertNumberToWords(Math.floor(num / 10000000)) + " Crore" + (num % 10000000 ? " " + convertNumberToWords(num % 10000000) : "")
 }
 
 export default function HistoryPage() {
   const router = useRouter()
   const [vouchers, setVouchers] = useState<VoucherData[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true)       // true only on first load
+  const [isRefetching, setIsRefetching] = useState(false) // true on subsequent fetches
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedVoucher, setSelectedVoucher] = useState<VoucherData | null>(null)
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
   const [showFullDetails, setShowFullDetails] = useState(false)
+
+  // Refs to manage fetch flow without extra re-renders
+  const hasLoadedRef = useRef(false)
+  const skipNextFetchRef = useRef(false)
+  const filterSignatureRef = useRef("")
 
   // Master data state for dropdowns
   const [masterData, setMasterData] = useState<MasterData>({
@@ -69,7 +91,8 @@ export default function HistoryPage() {
     transactionTypes: [],
     projects: [],
     bankAccounts: [],
-    uniqueNames: []
+    uniqueNames: [],
+    purposes: []
   })
   const [loadingMasterData, setLoadingMasterData] = useState(false)
 
@@ -88,6 +111,8 @@ export default function HistoryPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [serverTotalAmount, setServerTotalAmount] = useState(0)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
+  const [debouncedAmountFrom, setDebouncedAmountFrom] = useState("")
+  const [debouncedAmountTo, setDebouncedAmountTo] = useState("")
 
   // Debounce search effect
   useEffect(() => {
@@ -97,15 +122,54 @@ export default function HistoryPage() {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  // Reset to page 1 when filters change
+  // Debounce amountFrom filter
   useEffect(() => {
-    setCurrentPage(1)
-  }, [debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose, selectedTransactionType, selectedName, dateFrom, dateTo, amountFrom, amountTo])
+    const timer = setTimeout(() => {
+      setDebouncedAmountFrom(amountFrom)
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [amountFrom])
 
-  // Fetch data when page or debounced filters change
+  // Debounce amountTo filter
   useEffect(() => {
-    fetchRealHistoryData()
-  }, [currentPage, debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose, selectedTransactionType, selectedName, dateFrom, dateTo, amountFrom, amountTo])
+    const timer = setTimeout(() => {
+      setDebouncedAmountTo(amountTo)
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [amountTo])
+
+  // Single merged effect: prevents double-fetch when filters change
+  // Uses a filter-signature ref to distinguish filter-change vs page-change
+  useEffect(() => {
+    const sig = [
+      debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose,
+      selectedTransactionType, selectedName, dateFrom, dateTo,
+      debouncedAmountFrom, debouncedAmountTo
+    ].join("|")
+
+    const filterChanged = sig !== filterSignatureRef.current
+    if (filterChanged) {
+      filterSignatureRef.current = sig
+      if (currentPage !== 1) {
+        // Mark next effect fire (triggered by setCurrentPage) as a skip
+        skipNextFetchRef.current = true
+        setCurrentPage(1)
+      }
+      // Fetch page 1 immediately — no need to wait for state update
+      fetchRealHistoryData(1)
+      return
+    }
+
+    // This fire was caused by setCurrentPage(1) from a filter change — skip it
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false
+      return
+    }
+
+    // Normal page navigation
+    fetchRealHistoryData(currentPage)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose, selectedTransactionType, selectedName, dateFrom, dateTo, debouncedAmountFrom, debouncedAmountTo])
 
   // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -113,49 +177,7 @@ export default function HistoryPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [deletingVoucherId, setDeletingVoucherId] = useState<string | null>(null)
 
-  // Add convertNumberToWords function
-  const convertNumberToWords = (num: number): string => {
-    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
-    const teens = [
-      "Ten",
-      "Eleven",
-      "Twelve",
-      "Thirteen",
-      "Fourteen",
-      "Fifteen",
-      "Sixteen",
-      "Seventeen",
-      "Eighteen",
-      "Nineteen",
-    ]
-    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
-
-    if (num === 0) return "Zero"
-    if (num < 10) return ones[num]
-    if (num < 20) return teens[num - 10]
-    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? " " + ones[num % 10] : "")
-    if (num < 1000)
-      return ones[Math.floor(num / 100)] + " Hundred" + (num % 100 ? " " + convertNumberToWords(num % 100) : "")
-    if (num < 100000)
-      return (
-        convertNumberToWords(Math.floor(num / 1000)) +
-        " Thousand" +
-        (num % 1000 ? " " + convertNumberToWords(num % 1000) : "")
-      )
-    if (num < 10000000)
-      return (
-        convertNumberToWords(Math.floor(num / 100000)) +
-        " Lakh" +
-        (num % 100000 ? " " + convertNumberToWords(num % 100000) : "")
-      )
-    return (
-      convertNumberToWords(Math.floor(num / 10000000)) +
-      " Crore" +
-      (num % 10000000 ? " " + convertNumberToWords(num % 10000000) : "")
-    )
-  }
-
-  // Add handleAmountChange function
+  // handleAmountChange function (uses module-level convertNumberToWords)
   const handleAmountChange = (value: string) => {
     if (!editVoucher) return
 
@@ -170,44 +192,39 @@ export default function HistoryPage() {
     }
   }
 
-  // Function to fetch master data from Supabase
+  // Function to fetch master data from Supabase (runs once on mount)
   const fetchMasterData = async () => {
     try {
       setLoadingMasterData(true)
-      console.log("=== FETCHING MASTER DATA FROM SUPABASE ===")
 
-      const { data, error } = await supabase.from('master').select('*')
-      
-      if (error) {
-        throw new Error(`Supabase error: ${error.message}`)
-      }
+      // Run both queries in parallel — select only the columns we need
+      const [masterResult, historyResult] = await Promise.all([
+        supabase
+          .from('master')
+          .select('company_name,transaction_type,project,bank_ac_from'),
+        supabase
+          .from('History')
+          .select('beneficiary_name,purpose_of_payment')
+      ])
 
-      if (data) {
-        const companyNames = [...new Set(data.map(item => item.company_name).filter(Boolean))] as string[]
-        const transactionTypes = [...new Set(data.map(item => item.transaction_type).filter(Boolean))] as string[]
-        const projects = [...new Set(data.map(item => item.project).filter(Boolean))] as string[]
-        const bankAccounts = [...new Set(data.map(item => item.bank_ac_from).filter(Boolean))] as string[]
+      if (masterResult.error) throw new Error(masterResult.error.message)
 
-        // Also fetch unique beneficiary names from History for the filter
-        const { data: namesData } = await supabase.from('History').select('beneficiary_name').not('beneficiary_name', 'is', null)
-        const uniqueNames = [...new Set(namesData?.map(item => item.beneficiary_name).filter(Boolean))] as string[]
+      const masterDataArr = masterResult.data ?? []
+      const historyDataArr = historyResult.data ?? []
 
-        setMasterData({
-          companyNames,
-          transactionTypes,
-          projects,
-          bankAccounts,
-          uniqueNames: uniqueNames.sort()
-        })
-        console.log(`✅ Successfully loaded master data!`)
-      }
+      setMasterData({
+        companyNames:     [...new Set(masterDataArr.map(i => i.company_name).filter(Boolean))].sort() as string[],
+        transactionTypes: [...new Set(masterDataArr.map(i => i.transaction_type).filter(Boolean))] as string[],
+        projects:         [...new Set(masterDataArr.map(i => i.project).filter(Boolean))].sort() as string[],
+        bankAccounts:     [...new Set(masterDataArr.map(i => i.bank_ac_from).filter(Boolean))] as string[],
+        purposes:         [...new Set(historyDataArr.map(i => i.purpose_of_payment).filter(Boolean))].sort() as string[],
+        uniqueNames:      [...new Set(historyDataArr.map(i => i.beneficiary_name).filter(Boolean))].sort() as string[],
+      })
     } catch (error) {
       console.error("Failed to fetch master data:", error)
       setMasterData({
-        companyNames: ["ABC Corp", "XYZ Ltd", "Global Tech"],
-        transactionTypes: ["PAYMENT", "TRANSFER", "REFUND", "OTHER"],
-        projects: ["Project Alpha", "Project Beta", "Project Gamma"],
-        bankAccounts: ["SBI - 1234", "HDFC - 5678", "ICICI - 9012"]
+        companyNames: [], transactionTypes: [], projects: [],
+        bankAccounts: [], uniqueNames: [], purposes: []
       })
     } finally {
       setLoadingMasterData(false)
@@ -253,66 +270,75 @@ export default function HistoryPage() {
     }
   }
 
-  const fetchRealHistoryData = async () => {
-    try {
+  const fetchRealHistoryData = async (page: number = currentPage) => {
+    // First load → show full-page spinner; subsequent → subtle refetch indicator
+    if (!hasLoadedRef.current) {
       setLoading(true)
-      console.log(`Fetching data from Supabase (Page ${currentPage})...`)
+    } else {
+      setIsRefetching(true)
+    }
 
-      let query = supabase
-        .from("History")
-        .select("*", { count: "exact" })
+    try {
+      const searchFilter = debouncedSearchTerm
+        ? `voucher_no.ilike.%${debouncedSearchTerm}%,beneficiary_name.ilike.%${debouncedSearchTerm}%,project.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`
+        : null
 
-      // Apply Filters
-      if (debouncedSearchTerm) {
-        query = query.or(`voucher_no.ilike.%${debouncedSearchTerm}%,beneficiary_name.ilike.%${debouncedSearchTerm}%,project.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`)
-      }
-      if (selectedCompany !== "all") query = query.eq("company_name", selectedCompany)
-      if (selectedProject !== "all") query = query.eq("project", selectedProject)
-      if (selectedPurpose !== "all") query = query.eq("purpose_of_payment", selectedPurpose)
-      if (selectedTransactionType !== "all") query = query.eq("transaction_type", selectedTransactionType)
-      if (selectedName !== "all") query = query.eq("beneficiary_name", selectedName)
-      if (dateFrom) query = query.gte("created_date", dateFrom)
-      if (dateTo) query = query.lte("created_date", dateTo)
-      if (amountFrom) query = query.gte("amount", amountFrom)
-      if (amountTo) query = query.lte("amount", amountTo)
+      // Only fetch columns actually used in the UI — avoids transferring large unused fields
+      const COLUMNS = [
+        'id','voucher_no','created_date','date_of_payment','company_name',
+        'beneficiary_name','purpose_of_payment','project','amount','transaction_type',
+        'name','pdf_link','bank_ac_from','po_number','beneficiary_ac_name',
+        'beneficiary_ac_number','beneficiary_bank_name','beneficiary_bank_ifsc',
+        'particulars','amount_in_words','entry_done_by','checked_by','approved_by'
+      ].join(',')
 
-      // Pagination & Order
-      const { data, error, count } = await query
-        .order("created_date", { ascending: false })
-        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
-
-      if (error) throw error
-
-      if (data) {
-        processRealSupabaseData(data)
-        setTotalCount(count || 0)
-      }
-
-      // Separate query for Total Amount (Backend Sum)
+      // Build the main paginated query
+      let mainQuery = supabase.from("History").select(COLUMNS, { count: "exact" })
       let amountQuery = supabase.from("History").select("amount")
-      if (debouncedSearchTerm) {
-        amountQuery = amountQuery.or(`voucher_no.ilike.%${debouncedSearchTerm}%,beneficiary_name.ilike.%${debouncedSearchTerm}%,project.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`)
-      }
-      if (selectedCompany !== "all") amountQuery = amountQuery.eq("company_name", selectedCompany)
-      if (selectedProject !== "all") amountQuery = amountQuery.eq("project", selectedProject)
-      if (selectedPurpose !== "all") amountQuery = amountQuery.eq("purpose_of_payment", selectedPurpose)
-      if (selectedTransactionType !== "all") amountQuery = amountQuery.eq("transaction_type", selectedTransactionType)
-      if (selectedName !== "all") amountQuery = amountQuery.eq("beneficiary_name", selectedName)
-      if (dateFrom) amountQuery = amountQuery.gte("created_date", dateFrom)
-      if (dateTo) amountQuery = amountQuery.lte("created_date", dateTo)
-      if (amountFrom) amountQuery = amountQuery.gte("amount", amountFrom)
-      if (amountTo) amountQuery = amountQuery.lte("amount", amountTo)
 
-      const { data: amountData, error: amountError } = await amountQuery
-      if (!amountError && amountData) {
-        const total = amountData.reduce((sum, row) => sum + (Number.parseFloat(row.amount) || 0), 0)
+      // Apply identical filters to both queries
+      const applyFilters = (q: any) => {
+        if (searchFilter) q = q.or(searchFilter)
+        if (selectedCompany !== "all") q = q.eq("company_name", selectedCompany)
+        if (selectedProject !== "all") q = q.eq("project", selectedProject)
+        if (selectedPurpose !== "all") q = q.eq("purpose_of_payment", selectedPurpose)
+        if (selectedTransactionType !== "all") q = q.eq("transaction_type", selectedTransactionType)
+        if (selectedName !== "all") q = q.eq("beneficiary_name", selectedName)
+        if (dateFrom) q = q.gte("created_date", dateFrom)
+        if (dateTo)   q = q.lte("created_date", dateTo)
+        if (debouncedAmountFrom) q = q.gte("amount", debouncedAmountFrom)
+        if (debouncedAmountTo)   q = q.lte("amount", debouncedAmountTo)
+        return q
+      }
+
+      mainQuery   = applyFilters(mainQuery)
+      amountQuery = applyFilters(amountQuery)
+
+      // Run both queries in parallel — cuts wait time in half vs sequential
+      const [mainResult, amountResult] = await Promise.all([
+        mainQuery.order("created_date", { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1),
+        amountQuery
+      ])
+
+      if (mainResult.error) throw mainResult.error
+
+      if (mainResult.data) {
+        processRealSupabaseData(mainResult.data)
+        setTotalCount(mainResult.count || 0)
+      }
+
+      if (!amountResult.error && amountResult.data) {
+        const total = amountResult.data.reduce((sum, row) => sum + (Number.parseFloat(row.amount) || 0), 0)
         setServerTotalAmount(total)
       }
+
+      hasLoadedRef.current = true
     } catch (error) {
       console.error("Failed to fetch real data:", error)
       alert("Error fetching data. Please check filters and try again.")
     } finally {
       setLoading(false)
+      setIsRefetching(false)
     }
   }
 
@@ -402,14 +428,15 @@ export default function HistoryPage() {
     }
   }
 
-  // Open edit modal with voucher data and fetch master data
+  // Open edit modal — master data already loaded on mount, skip redundant refetch
   const openEditModal = async (voucher: VoucherData) => {
-    setEditVoucher({ ...voucher }) // Create a copy for editing
+    setEditVoucher({ ...voucher })
     setIsEditModalOpen(true)
-    setSelectedVoucher(null) // Close view modal if open
-
-    // Fetch master data when opening edit modal
-    await fetchMasterData()
+    setSelectedVoucher(null)
+    // Only fetch master data if it wasn't loaded yet (edge case)
+    if (masterData.companyNames.length === 0) {
+      await fetchMasterData()
+    }
   }
 
   // Close edit modal
@@ -989,10 +1016,10 @@ export default function HistoryPage() {
   // Memoized filter options for performance
 
 
-  // Use master data for filter options
+  // Use master data for filter options (all fetched once on mount)
   const uniqueCompanies = masterData.companyNames
   const uniqueProjects = masterData.projects
-  const uniquePurposes = useMemo(() => [...new Set(vouchers.map(v => v.purposeOfPayment).filter(Boolean))].sort(), [vouchers])
+  const uniquePurposes = masterData.purposes
   const uniqueTransactionTypes = masterData.transactionTypes
   const uniqueNames = masterData.uniqueNames
 
@@ -1172,19 +1199,13 @@ export default function HistoryPage() {
       selectedName !== "all",
       dateFrom,
       dateTo,
-      amountFrom,
-      amountTo,
+      debouncedAmountFrom,
+      debouncedAmountTo,
     ].filter(Boolean).length
   }, [
-    selectedCompany,
-    selectedProject,
-    selectedPurpose,
-    selectedTransactionType,
-    selectedName,
-    dateFrom,
-    dateTo,
-    amountFrom,
-    amountTo,
+    selectedCompany, selectedProject, selectedPurpose,
+    selectedTransactionType, selectedName,
+    dateFrom, dateTo, debouncedAmountFrom, debouncedAmountTo,
   ])
 
   const renderAllDetails = (voucher: VoucherData) => {
@@ -1308,7 +1329,8 @@ export default function HistoryPage() {
     )
   }
 
-  if (loading) {
+  // Full-page spinner only on very first load; subsequent fetches use inline indicator
+  if (loading && !hasLoadedRef.current) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 flex items-center justify-center p-4">
         <Card className="p-6 sm:p-8 text-center w-full max-w-md">
@@ -1367,6 +1389,12 @@ export default function HistoryPage() {
                     Users
                   </Button>
                </>
+              )}
+              {isRefetching && (
+                <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium animate-pulse">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Refreshing...
+                </div>
               )}
               <Badge variant="secondary" className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 text-xs">
                 {totalCount} Total Vouchers

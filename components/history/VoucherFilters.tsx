@@ -1,4 +1,4 @@
-import type React from "react"
+import React, { memo } from "react"
 import { Search, Filter, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,7 +36,7 @@ interface VoucherFiltersProps {
   uniqueTransactionTypes: string[]
 }
 
-const VoucherFilters: React.FC<VoucherFiltersProps> = ({
+const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
   searchTerm,
   setSearchTerm,
   selectedName,
@@ -233,6 +233,6 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = ({
       </CardContent>
     </Card>
   )
-}
+})
 
 export default VoucherFilters

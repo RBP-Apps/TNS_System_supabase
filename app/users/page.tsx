@@ -409,9 +409,9 @@ export default function UserRegistration() {
                             className="border border-gray-300 rounded px-3 py-1.5 focus:ring-2 focus:ring-purple-500"
                           >
                             <option value="user">user</option>
-                            <option value="USER">USER</option>
+                            {/* <option value="USER">USER</option> */}
                             <option value="admin">admin</option>
-                            <option value="ADMIN">ADMIN</option>
+                            {/* <option value="ADMIN">ADMIN</option> */}
                           </select>
                         ) : (
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${

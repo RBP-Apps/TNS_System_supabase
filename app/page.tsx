@@ -81,7 +81,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-4 text-center bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white rounded-t-lg p-8">
           <div className="mx-auto  w-32 h-16 flex items-center justify-center">
             {/* <Building2 className="h-10 w-10 text-white" /> */}
-            <img src="/Logo.PNG"  w-32 h-16 alt="" />
+            <img src="/Logo.PNG" className="w-32 h-16 object-contain" alt="Logo" />
           </div>
           <CardTitle className="text-3xl font-bold">TNS Payment System</CardTitle>
           {/* <CardDescription className="text-blue-100 text-lg">Hamar Energy (India) Pvt Ltd</CardDescription> */}
