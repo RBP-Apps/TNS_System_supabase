@@ -74,7 +74,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
         <div className="p-6 sm:p-8">
           <div className="flex justify-between items-center mb-6 border-b pb-4">
             <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">
-              Edit Voucher: {editVoucher.voucherNo}
+              Edit {editVoucher.recordType === "Credit" ? "Credit Entry" : editVoucher.recordType === "Transfer" ? "Self Inter Transfer" : "Voucher"}: {editVoucher.voucherNo || editVoucher.id}
             </h2>
             <Button onClick={onClose} variant="ghost" size="sm" className="text-gray-500 hover:text-red-600">
               <X className="h-5 w-5" />
@@ -142,7 +142,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                     setEditVoucher((prev) => (prev ? { ...prev, dateOfPaymentProcess: e.target.value } : null))
                   }
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  required
                 />
               </div>
 
@@ -153,7 +152,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                   value={editVoucher.purposeOfPayment}
                   onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, purposeOfPayment: e.target.value } : null))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  required
                 />
               </div>
 
@@ -182,6 +180,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
               {[
                 ["Beneficiary Name", "beneficiaryName"],
                 ["PO Number", "poNumber"],
+                ["UTR Number", "utrNumber"],
                 ["Beneficiary A/C Name", "beneficiaryAcName"],
                 ["Beneficiary A/C Number", "beneficiaryAcNumber"],
                 ["Beneficiary Bank Name", "beneficiaryBankName"],
@@ -193,7 +192,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                     value={editVoucher[key]}
                     onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, [key]: e.target.value } : null))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    required
                   />
                 </div>
               ))}
@@ -229,7 +227,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                 onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, particulars: e.target.value } : null))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 rows={3}
-                required
               />
             </div>
 
@@ -242,7 +239,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                   value={editVoucher.amount}
                   onChange={(e) => handleAmountChange(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  required
                 />
               </div>
               <div>
@@ -251,7 +247,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                   value={editVoucher.amountInWords}
                   onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, amountInWords: e.target.value } : null))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  required
                 />
               </div>
             </div>
@@ -268,7 +263,6 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                     value={editVoucher[key]}
                     onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, [key]: e.target.value } : null))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    required
                     readOnly={isReadOnly}
                   />
                 </div>

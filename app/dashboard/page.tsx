@@ -76,7 +76,7 @@ export default function DashboardPage() {
   const fetchVouchersFromSupabase = async () => {
     try {
       setLoading(true)
-      console.log('=== FETCHING DASHBOARD DATA FROM SUPABASE ===')
+      // console.log('=== FETCHING DASHBOARD DATA FROM SUPABASE ===')
 
       const { data, error } = await supabase
         .from('History')
@@ -88,7 +88,7 @@ export default function DashboardPage() {
       }
 
       if (data && data.length > 0) {
-        console.log('Successfully received data from History table')
+        // console.log('Successfully received data from History table')
         const mappedVouchers = data
           .map((row: any, index: number) => {
             if (!row.voucher_no) return null
@@ -122,7 +122,7 @@ export default function DashboardPage() {
           .filter((voucher): voucher is VoucherData => Boolean(voucher))
 
         setVouchers(mappedVouchers)
-        console.log(`✅ Successfully loaded ${mappedVouchers.length} vouchers from Supabase!`)
+        // console.log(`✅ Successfully loaded ${mappedVouchers.length} vouchers from Supabase!`)
       } else {
         console.warn('No vouchers found in History table')
         setVouchers([])
@@ -263,6 +263,15 @@ export default function DashboardPage() {
               >
                 <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 New Voucher
+              </Button>
+              <Button
+                onClick={() => router.push("/credit")}
+                variant="outline"
+                size="sm"
+                className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs sm:text-sm flex-1 sm:flex-none"
+              >
+                <DollarSign className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                Add Receipt
               </Button>
               <Button
                 onClick={() => router.push("/history")}

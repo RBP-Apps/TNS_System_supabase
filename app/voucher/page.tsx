@@ -1,79 +1,147 @@
 "use client"
 
 import { useState, useEffect } from "react"
-
 import { useRouter } from "next/navigation"
-
 import { Button } from "@/components/ui/button"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
 import { Input } from "@/components/ui/input"
-
 import { Label } from "@/components/ui/label"
-
 import { Textarea } from "@/components/ui/textarea"
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-import { LogOut, History, Save, Building2, BarChart3, Users, Database } from "lucide-react"
-
+import { LogOut, History, Save, Building2, BarChart3, Users, Database, Check, ChevronsUpDown, RefreshCw } from "lucide-react"
 import jsPDF from "jspdf"
-
 import autoTable from "jspdf-autotable"
-
-import { Loader2 } from "lucide-react"
+import { Loader2 , DollarSign } from "lucide-react"
 import supabase from "@/lib/supabase"
+import emailjs from "@emailjs/browser"
+import { cn } from "@/lib/utils"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import React from "react"
 
 
 interface VoucherData {
-
   id: string
-
   voucherNo: string
-
   dateOfPayment: string
-
   bankAcFrom: string
-
   companyName: string
-
   bankAccount: string
-
   transactionType: string
-
   purposeOfPayment: string
-
-  // paymentFromCompany: string
-
   project: string
-
   beneficiaryName: string
-
   poNumber: string
-
+  utrNumber: string
   beneficiaryAccountName: string
-
   beneficiaryAccountNumber: string
-
   beneficiaryBankName: string
-
   beneficiaryBankIFSC: string
-
   amount: string
-
   amountInWords: string
-
   particulars: string
-
   entryDoneBy: string
-
   checkedBy: string
-
-  approvedBy: string
-
+  vendorNumber: string
+  vendorEmail: string
   submittedAt: string
+}
 
+const SearchableBeneficiarySelect = ({
+  value,
+  onValueChange,
+  options,
+  onSelect,
+}: {
+  value: string
+  onValueChange: (v: string) => void
+  options: any[]
+  onSelect: (name: string) => void
+}) => {
+  const [open, setOpen] = React.useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const filteredOptions = React.useMemo(() => {
+    if (!value) return options
+    return options.filter((opt) =>
+      opt.beneficiary_name.toLowerCase().includes(value.toLowerCase())
+    )
+  }, [value, options])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <Input
+        value={value}
+        onChange={(e) => {
+          onValueChange(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600 pr-8 w-full"
+        placeholder="Type or select beneficiary"
+        required
+      />
+      <ChevronsUpDown
+        className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50 cursor-pointer"
+        onClick={() => setOpen(!open)}
+      />
+
+      {open && filteredOptions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none">
+          {filteredOptions.map((beneficiary) => (
+            <div
+              key={beneficiary.beneficiary_name}
+              className={cn(
+                "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                value === beneficiary.beneficiary_name && "bg-accent text-accent-foreground"
+              )}
+              onClick={() => {
+                onSelect(beneficiary.beneficiary_name)
+                setOpen(false)
+              }}
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  value === beneficiary.beneficiary_name ? "opacity-100" : "opacity-0"
+                )}
+              />
+              {beneficiary.beneficiary_name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+
+const extractFirstTwoWords = (text: string) => {
+  if (!text) return ""
+  return text.split(" ").slice(0, 2).join(" ")
 }
 
 export default function VoucherPage() {
@@ -97,6 +165,8 @@ export default function VoucherPage() {
   const [projects, setProjects] = useState([]) // New state for projects
 
   const [filteredBankAccounts, setFilteredBankAccounts] = useState<any[]>([])
+
+  const [beneficiaries, setBeneficiaries] = useState<any[]>([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -126,6 +196,8 @@ export default function VoucherPage() {
 
     poNumber: "",
 
+    utrNumber: "",
+
     beneficiaryAccountName: "",
 
     beneficiaryAccountNumber: "",
@@ -146,6 +218,10 @@ export default function VoucherPage() {
 
     approvedBy: "",
 
+    vendorNumber: "",
+
+    vendorEmail: "",
+
     submittedAt: "",
 
   })
@@ -158,11 +234,11 @@ export default function VoucherPage() {
 
   const handleCompanySelection = (value: string) => {
 
-    console.log("\n🏢 Company Selection Handler Called")
+    // console.log("\n🏢 Company Selection Handler Called")
 
-    console.log("Selected company:", value)
+    // console.log("Selected company:", value)
 
-    console.log("Current bankAccounts state:", bankAccounts)
+    // console.log("Current bankAccounts state:", bankAccounts)
 
     handleInputChange("companyName", value)
 
@@ -172,7 +248,7 @@ export default function VoucherPage() {
 
       const filtered = filterBankAccountsByCompany(value, bankAccounts)
 
-      console.log("Final filtered accounts:", filtered)
+      // console.log("Final filtered accounts:", filtered)
 
       setFilteredBankAccounts(filtered)
 
@@ -180,7 +256,7 @@ export default function VoucherPage() {
 
       if (voucherData.bankAcFrom && !filtered.includes(voucherData.bankAcFrom)) {
 
-        console.log("Resetting bank account selection")
+        // console.log("Resetting bank account selection")
 
         handleInputChange("bankAcFrom", "")
 
@@ -192,15 +268,15 @@ export default function VoucherPage() {
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: any[]) => {
 
-    console.log("=== FILTERING DEBUG ===")
+    // console.log("=== FILTERING DEBUG ===")
 
-    console.log("Selected Company:", selectedCompany)
+    // console.log("Selected Company:", selectedCompany)
 
-    console.log("All Bank Accounts:", allBankAccounts)
+    // console.log("All Bank Accounts:", allBankAccounts)
 
     if (!selectedCompany || !allBankAccounts.length) {
 
-      console.log("No company selected or no bank accounts available")
+      // console.log("No company selected or no bank accounts available")
 
       return allBankAccounts
 
@@ -216,13 +292,13 @@ export default function VoucherPage() {
 
         !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY', '(INDIA)'].includes(upperWord)
 
-      console.log(`Word: "${word}" -> Valid: ${isValidKeyword}`)
+      // console.log(`Word: "${word}" -> Valid: ${isValidKeyword}`)
 
       return isValidKeyword
 
     })
 
-    console.log("Keywords to match:", companyKeywords)
+    // console.log("Keywords to match:", companyKeywords)
 
     // Try different matching strategies
 
@@ -240,7 +316,7 @@ export default function VoucherPage() {
 
         )
 
-        console.log(`Strategy 1 - Account: "${account}" -> Match all keywords: ${allMatch}`)
+        // console.log(`Strategy 1 - Account: "${account}" -> Match all keywords: ${allMatch}`)
 
         return allMatch
 
@@ -260,7 +336,7 @@ export default function VoucherPage() {
 
         const matches = matchCount >= Math.min(2, companyKeywords.length)
 
-        console.log(`Strategy 2 - Account: "${account}" -> Match count: ${matchCount}/${companyKeywords.length} -> Matches: ${matches}`)
+        // console.log(`Strategy 2 - Account: "${account}" -> Match count: ${matchCount}/${companyKeywords.length} -> Matches: ${matches}`)
 
         return matches
 
@@ -278,7 +354,7 @@ export default function VoucherPage() {
 
         )
 
-        console.log(`Strategy 3 - Account: "${account}" -> Any match: ${anyMatch}`)
+        // console.log(`Strategy 3 - Account: "${account}" -> Any match: ${anyMatch}`)
 
         return anyMatch
 
@@ -290,25 +366,25 @@ export default function VoucherPage() {
 
     for (let i = 0; i < strategies.length; i++) {
 
-      console.log(`\n--- Trying Strategy ${i + 1} ---`)
+      // console.log(`\n--- Trying Strategy ${i + 1} ---`)
 
       const filtered = allBankAccounts.filter(strategies[i])
 
-      console.log(`Strategy ${i + 1} results:`, filtered)
+      // console.log(`Strategy ${i + 1} results:`, filtered)
 
       if (filtered.length > 0) {
 
-        console.log(`✅ Strategy ${i + 1} found ${filtered.length} matches`)
+        // console.log(`✅ Strategy ${i + 1} found ${filtered.length} matches`)
 
         return filtered
 
       }
 
-      console.log(`❌ Strategy ${i + 1} found no matches`)
+      // console.log(`❌ Strategy ${i + 1} found no matches`)
 
     }
 
-    console.log("⚠️ No strategy found matches, returning all accounts")
+    // console.log("⚠️ No strategy found matches, returning all accounts")
 
     return allBankAccounts
 
@@ -316,10 +392,10 @@ export default function VoucherPage() {
 
   const fetchCompanyNamesFromMaster = async () => {
     try {
-      console.log("Fetching company names from Supabase...")
+      // console.log("Fetching company names from Supabase...")
       const { data, error } = await supabase.from('master').select('company_name')
       if (error) throw error
-      
+
       if (data) {
         const uniqueCompanyNames = [...new Set(data.map(item => item.company_name).filter(Boolean))]
         setCompanyNames(uniqueCompanyNames)
@@ -331,14 +407,14 @@ export default function VoucherPage() {
 
   const fetchBankAccountsFromMaster = async () => {
     try {
-      console.log("Fetching bank accounts from Supabase...")
+      // console.log("Fetching bank accounts from Supabase...")
       const { data, error } = await supabase.from('master').select('bank_ac_from')
       if (error) throw error
-      
+
       if (data) {
         const uniqueBankAccounts = [...new Set(data.map(item => item.bank_ac_from).filter(Boolean))]
         setBankAccounts(uniqueBankAccounts)
-        setFilteredBankAccounts(uniqueBankAccounts) 
+        setFilteredBankAccounts(uniqueBankAccounts)
       }
     } catch (error) {
       console.error("Error fetching bank accounts from master:", error)
@@ -347,10 +423,10 @@ export default function VoucherPage() {
 
   const fetchTransactionTypesFromMaster = async () => {
     try {
-      console.log("Fetching transaction types from Supabase...")
+      // console.log("Fetching transaction types from Supabase...")
       const { data, error } = await supabase.from('master').select('transaction_type')
       if (error) throw error
-      
+
       if (data) {
         const uniqueTransactionTypes = [...new Set(data.map(item => item.transaction_type).filter(Boolean))]
         setTransactionTypes(uniqueTransactionTypes)
@@ -362,10 +438,10 @@ export default function VoucherPage() {
 
   const fetchProjectsFromMaster = async () => {
     try {
-      console.log("Fetching projects from Supabase...")
+      // console.log("Fetching projects from Supabase...")
       const { data, error } = await supabase.from('master').select('project')
       if (error) throw error
-      
+
       if (data) {
         const uniqueProjects = [...new Set(data.map(item => item.project).filter(Boolean))]
         setProjects(uniqueProjects)
@@ -375,12 +451,116 @@ export default function VoucherPage() {
     }
   }
 
+  const fetchBeneficiariesFromHistory = async () => {
+    try {
+      // console.log("Fetching beneficiaries from History table...")
+
+      // Get the latest details for each beneficiary
+      // We'll fetch all and then filter for uniqueness in JS to get the latest
+      const { data, error } = await supabase
+        .from('History')
+        .select(`
+          beneficiary_name, 
+          company_name, 
+          bank_ac_from, 
+          transaction_type, 
+          beneficiary_ac_name, 
+          beneficiary_ac_number, 
+          beneficiary_bank_name, 
+          beneficiary_bank_ifsc,
+          created_date
+        `)
+        .order('created_date', { ascending: false })
+
+      if (error) throw error
+
+      if (data) {
+        // Use a Map to keep only the latest record for each beneficiary_name
+        const uniqueBeneficiariesMap = new Map()
+        data.forEach(item => {
+          if (item.beneficiary_name && !uniqueBeneficiariesMap.has(item.beneficiary_name)) {
+            uniqueBeneficiariesMap.set(item.beneficiary_name, item)
+          }
+        })
+
+        const uniqueBeneficiaries = Array.from(uniqueBeneficiariesMap.values())
+          .sort((a, b) => a.beneficiary_name.localeCompare(b.beneficiary_name))
+
+        setBeneficiaries(uniqueBeneficiaries)
+        // console.log(`Loaded ${uniqueBeneficiaries.length} unique beneficiaries`)
+      }
+    } catch (error) {
+      console.error("Error fetching beneficiaries from history:", error)
+    }
+  }
+
+  const handleBeneficiarySelection = (name: string) => {
+    // console.log("Beneficiary selected:", name)
+
+    // Update the main beneficiary name field
+    handleInputChange("beneficiaryName", name)
+
+    if (!name) {
+      // console.log("Clearing autofilled fields...")
+      handleInputChange("companyName", "")
+      handleInputChange("bankAcFrom", "")
+      handleInputChange("transactionType", "")
+      handleInputChange("poNumber", "")
+      handleInputChange("utrNumber", "")
+      handleInputChange("beneficiaryAccountName", "")
+      handleInputChange("beneficiaryAccountNumber", "")
+      handleInputChange("beneficiaryBankName", "")
+      handleInputChange("beneficiaryBankIFSC", "")
+      return
+    }
+
+    // Find the beneficiary data for autofill
+    const beneficiaryData = beneficiaries.find(b => b.beneficiary_name === name)
+
+    if (beneficiaryData) {
+      // console.log("Autofilling data for beneficiary:", name)
+
+      // Autofill fields
+      if (beneficiaryData.company_name) {
+        handleCompanySelection(beneficiaryData.company_name)
+      }
+
+      if (beneficiaryData.bank_ac_from) {
+        // Use a small delay to ensure this isn't overwritten by handleCompanySelection's reset logic
+        setTimeout(() => {
+          handleInputChange("bankAcFrom", beneficiaryData.bank_ac_from)
+        }, 150)
+      }
+
+      if (beneficiaryData.transaction_type) {
+        handleInputChange("transactionType", beneficiaryData.transaction_type)
+      }
+
+      if (beneficiaryData.beneficiary_ac_name) {
+        handleInputChange("beneficiaryAccountName", beneficiaryData.beneficiary_ac_name)
+      }
+
+      if (beneficiaryData.beneficiary_ac_number) {
+        handleInputChange("beneficiaryAccountNumber", beneficiaryData.beneficiary_ac_number)
+      }
+
+      if (beneficiaryData.beneficiary_bank_name) {
+        handleInputChange("beneficiaryBankName", beneficiaryData.beneficiary_bank_name)
+      }
+
+      if (beneficiaryData.beneficiary_bank_ifsc) {
+        handleInputChange("beneficiaryBankIFSC", beneficiaryData.beneficiary_bank_ifsc)
+      }
+    }
+  }
+
+
   const fetchPaymentFromCompaniesFromMaster = async () => {
     try {
-      console.log("Fetching payment from companies from Supabase...")
+      // console.log("Fetching payment from companies from Supabase...")
       const { data, error } = await supabase.from('master').select('payment_from_company')
       if (error) throw error
-      
+
       if (data) {
         const uniquePaymentFromCompanies = [...new Set(data.map(item => item.payment_from_company).filter(Boolean))]
         setPaymentFromCompanies(uniquePaymentFromCompanies)
@@ -397,7 +577,7 @@ export default function VoucherPage() {
         .select('voucher_no')
         .order('id', { ascending: false })
         .limit(1)
-        
+
       if (error) throw error
 
       if (data && data.length > 0 && data[0].voucher_no) {
@@ -448,7 +628,7 @@ export default function VoucherPage() {
 
           // Fetch all dropdown data from master table with proper sequencing
 
-          console.log("Starting to fetch all dropdown data...")
+          // console.log("Starting to fetch all dropdown data...")
 
           await Promise.all([
 
@@ -462,9 +642,11 @@ export default function VoucherPage() {
 
             fetchProjectsFromMaster(),
 
+            fetchBeneficiariesFromHistory(),
+
           ])
 
-          console.log("All dropdown data fetched successfully")
+          // console.log("All dropdown data fetched successfully")
 
           const currentDate = new Date().toISOString().split("T")[0]
 
@@ -501,6 +683,7 @@ export default function VoucherPage() {
     initializeVoucher()
 
   }, [router])
+
 
   const handleLogout = () => {
 
@@ -1414,7 +1597,7 @@ export default function VoucherPage() {
 
   }
 
-// FIXED: Updated handleSubmit function for the frontend
+  // FIXED: Updated handleSubmit function for the frontend
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -1432,7 +1615,7 @@ export default function VoucherPage() {
       // 1️⃣ Generate PDF with correct voucher number
       const pdfBase64 = await generatePDFBlob(finalSubmissionData)
       const fileName = `Voucher_${generatedVoucherNo}.pdf`
-      
+
       // Convert base64 to Blob
       const byteCharacters = atob(pdfBase64 as string)
       const byteNumbers = new Array(byteCharacters.length)
@@ -1458,7 +1641,7 @@ export default function VoucherPage() {
       const { data: publicUrlData } = supabase.storage
         .from('vouchers')
         .getPublicUrl(fileName)
-        
+
       const pdfUrl = publicUrlData.publicUrl
 
       // 3️⃣ Save data to Supabase History table
@@ -1475,6 +1658,7 @@ export default function VoucherPage() {
           project: finalSubmissionData.project,
           beneficiary_name: finalSubmissionData.beneficiaryName,
           po_number: finalSubmissionData.poNumber,
+          utr_number: finalSubmissionData.utrNumber,
           beneficiary_ac_name: finalSubmissionData.beneficiaryAccountName,
           beneficiary_ac_number: finalSubmissionData.beneficiaryAccountNumber,
           beneficiary_bank_name: finalSubmissionData.beneficiaryBankName,
@@ -1486,14 +1670,58 @@ export default function VoucherPage() {
           checked_by: finalSubmissionData.checkedBy,
           approved_by: finalSubmissionData.approvedBy,
           pdf_link: pdfUrl,
-          name: username
+          name: username,
+          vendor_number: finalSubmissionData.vendorNumber,
+          vendor_email: finalSubmissionData.vendorEmail
         }])
 
       if (insertError) {
         throw new Error("Database insert failed: " + insertError.message)
       }
 
-      // 4️⃣ Save locally (original logic)
+      // 4️⃣ Send Notifications (WhatsApp and Email)
+      try {
+        const shortCompanyName = extractFirstTwoWords(finalSubmissionData.companyName)
+        const formattedDate = new Date(finalSubmissionData.dateOfPayment).toLocaleDateString("en-IN")
+
+        const messageContent = `An amount of rupees ${finalSubmissionData.amount} has been transfered to account having ${finalSubmissionData.utrNumber} and ${formattedDate} from ${shortCompanyName}`
+
+        // WhatsApp Integration via Edge Function
+        const rawPhone = finalSubmissionData.vendorNumber.replace(/\D/g, '')
+        const vendorPhone = rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`
+
+        await supabase.functions.invoke('whatsapp-notification', {
+          body: {
+            to: vendorPhone,
+            amount: finalSubmissionData.amount,
+            utr: finalSubmissionData.utrNumber,
+            date: formattedDate,
+            company: shortCompanyName
+          }
+        })
+
+        // Email Integration via EmailJS
+        if (finalSubmissionData.vendorEmail) {
+          await emailjs.send(
+            process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "",
+            process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "",
+            {
+              amount: finalSubmissionData.amount,
+              utr_number: finalSubmissionData.utrNumber,
+              dated: formattedDate,
+              company_name: shortCompanyName,
+              to_email: finalSubmissionData.vendorEmail,
+              message: messageContent
+            },
+            process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ""
+          )
+        }
+      } catch (notifyError) {
+        console.error("Notification error:", notifyError)
+        // We don't throw here to ensure the submission isn't marked as failed just because notifications failed
+      }
+
+      // 5️⃣ Save locally (original logic)
       const existingVouchers = JSON.parse(localStorage.getItem("tns_vouchers") || "[]")
       existingVouchers.push(finalSubmissionData)
       localStorage.setItem("tns_vouchers", JSON.stringify(existingVouchers))
@@ -1508,7 +1736,7 @@ export default function VoucherPage() {
       setVoucherData((prev) => ({
         ...prev,
         id: "voucher_" + Date.now(),
-        voucherNo: "", 
+        voucherNo: "",
         bankAcFrom: "",
         companyName: "",
         transactionType: "",
@@ -1516,6 +1744,7 @@ export default function VoucherPage() {
         project: "",
         beneficiaryName: "",
         poNumber: "",
+        utrNumber: "",
         beneficiaryAccountName: "",
         beneficiaryAccountNumber: "",
         beneficiaryBankName: "",
@@ -1526,6 +1755,8 @@ export default function VoucherPage() {
         entryDoneBy: username,
         checkedBy: "",
         approvedBy: "",
+        vendorNumber: "",
+        vendorEmail: "",
       }))
     } catch (error) {
       console.error("Error submitting voucher:", error)
@@ -1600,6 +1831,24 @@ export default function VoucherPage() {
                   </Button>
                 </>
               )}
+
+              <Button
+                onClick={() => router.push("/credit")}
+                variant="outline"
+                className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-sm md:text-base"
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                Add Receipt
+              </Button>
+
+              <Button
+                onClick={() => router.push("/self-transfer")}
+                variant="outline"
+                className="bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100 text-sm md:text-base"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Self Transfer
+              </Button>
 
               <Button
 
@@ -1733,108 +1982,145 @@ export default function VoucherPage() {
 
                 <div className="space-y-2 sm:space-y-4">
 
-                  {/* Row 1: Bank AC From, Company Name, Date */}
-
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
 
-                    <div className="sm:col-span-4">
+                    <div className="sm:col-span-8">
 
-                      <Label className="text-xs font-bold text-gray-700 uppercase">Company Name</Label>
-
-                      <Select
-
-                        value={voucherData.companyName}
-
-                        onValueChange={handleCompanySelection}
-
-                      >
-
-                        <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
-
-                          <SelectValue placeholder="Select Company" />
-
-                        </SelectTrigger>
-
-                        <SelectContent>
-
-                          {companyNames.map((company, index) => (
-
-                            <SelectItem key={`company-name-${index}-${company.replace(/\s+/g, "-")}`} value={company}>
-
-                              {company}
-
-                            </SelectItem>
-
-                          ))}
-
-                        </SelectContent>
-
-                      </Select>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY NAME (PAYER)</Label>
+                      <SearchableBeneficiarySelect
+                        value={voucherData.beneficiaryName}
+                        onValueChange={(val) => handleBeneficiarySelection(val)}
+                        options={beneficiaries}
+                        onSelect={handleBeneficiarySelection}
+                      />
 
                     </div>
 
                     <div className="sm:col-span-4">
 
-                      <Label className="text-xs font-bold text-gray-700 uppercase">BANK AC FROM</Label>
-
-                      <Select
-
-                        value={voucherData.bankAcFrom}
-
-                        onValueChange={(value) => {
-
-                          console.log("Bank account selected:", value)
-
-                          handleInputChange("bankAcFrom", value)
-
-                        }}
-
-                      >
-
-                        <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
-
-                          <SelectValue placeholder={`Select Bank Account (${filteredBankAccounts.length} available)`} />
-
-                        </SelectTrigger>
-
-                        <SelectContent>
-
-                          {(filteredBankAccounts.length > 0 ? filteredBankAccounts : bankAccounts).map((account, index) => (
-
-                            <SelectItem key={`bank-account-${index}-${account}`} value={account}>
-
-                              {account}
-
-                            </SelectItem>
-
-                          ))}
-
-                        </SelectContent>
-
-                      </Select>
-
-                    </div>
-
-                    <div className="sm:col-span-4">
-
-                      <Label className="text-xs font-bold text-gray-700 uppercase">DATE</Label>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">PO. NUMBER</Label>
 
                       <Input
 
-                        type="date"
+                        value={voucherData.poNumber}
 
-                        value={voucherData.dateOfPayment}
-
-                        onChange={(e) => handleInputChange("dateOfPayment", e.target.value)}
+                        onChange={(e) => handleInputChange("poNumber", e.target.value)}
 
                         className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
-                        required
 
                       />
 
                     </div>
 
+                  </div>
+
+                  {/* Row 1: Bank AC From, Company Name, Date */}
+
+
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-400 pb-3">
+
+                    {/* Company Name */}
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">
+                        Company Name
+                      </Label>
+
+                      <Select
+                        value={voucherData.companyName}
+                        onValueChange={handleCompanySelection}
+                      >
+                        <SelectTrigger className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
+                          <SelectValue placeholder="Select Company" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {companyNames.map((company, index) => (
+                            <SelectItem
+                              key={`company-name-${index}-${company.replace(/\s+/g, "-")}`}
+                              value={company}
+                            >
+                              {company}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Bank Account */}
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">
+                        BANK AC FROM
+                      </Label>
+
+                      <Select
+                        value={voucherData.bankAcFrom}
+                        onValueChange={(value) => {
+                          // console.log("Bank account selected:", value)
+                          handleInputChange("bankAcFrom", value)
+                        }}
+                      >
+                        <SelectTrigger className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
+                          <SelectValue
+                            placeholder={`Select Bank Account (${filteredBankAccounts.length} available)`}
+                          />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {(filteredBankAccounts.length > 0
+                            ? filteredBankAccounts
+                            : bankAccounts
+                          ).map((account, index) => (
+                            <SelectItem
+                              key={`bank-account-${index}-${account}`}
+                              value={account}
+                            >
+                              {account}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Date */}
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">
+                        DATE
+                      </Label>
+
+                      <Input
+                        type="date"
+                        value={voucherData.dateOfPayment}
+                        onChange={(e) =>
+                          handleInputChange("dateOfPayment", e.target.value)
+                        }
+                        className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Vendor Details Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-400 pb-3">
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor WhatsApp Number</Label>
+                      <Input
+                        value={voucherData.vendorNumber}
+                        onChange={(e) => handleInputChange("vendorNumber", e.target.value)}
+                        className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+                        placeholder="Enter 10 digit number"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor Email</Label>
+                      <Input
+                        type="email"
+                        value={voucherData.vendorEmail}
+                        onChange={(e) => handleInputChange("vendorEmail", e.target.value)}
+                        className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+                        placeholder="Enter email address"
+                      />
+                    </div>
                   </div>
 
                   {/* Row 2: Purpose, Payment From Company, Transaction Type */}
@@ -1862,146 +2148,84 @@ export default function VoucherPage() {
                     </div>
 
                     <div className="sm:col-span-4">
-
                       <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
-
                       <Select
-
                         value={voucherData.transactionType}
-
                         onValueChange={(value) => handleInputChange("transactionType", value)}
-
                       >
-
                         <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
-
                           <SelectValue placeholder="Select Transaction Type" />
-
                         </SelectTrigger>
-
                         <SelectContent>
-
                           {transactionTypes.map((type, index) => (
-
                             <SelectItem key={`transaction-type-${index}-${type.replace(/\s+/g, "-")}`} value={type}>
-
                               {type}
-
                             </SelectItem>
-
                           ))}
-
                         </SelectContent>
-
                       </Select>
-
                     </div>
 
+                    <div className="sm:col-span-4">
+                      <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
+                      <Input
+                        value={voucherData.utrNumber}
+                        onChange={(e) => handleInputChange("utrNumber", e.target.value)}
+                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+                        placeholder="Enter UTR Number"
+                      />
+                    </div>
                   </div>
 
                   {/* Row 3: Voucher No and Project */}
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
 
-                    {/* <div className="sm:col-span-6">
 
-                      <Label className="text-xs font-bold text-gray-700 uppercase">VOUCHER NO.</Label>
-
-                      <Input
-
-                        value={voucherData.voucherNo}
-
-                        onChange={(e) => handleInputChange("voucherNo", e.target.value)}
-
-                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
-                        required
-
-                        readOnly
-
-                      />
-
-                    </div> */}
-
-                    <div className="sm:col-span-6">
-
+                    <div className="sm:col-span-4">
                       <Label className="text-xs font-bold text-gray-700 uppercase">PROJECT</Label>
-
                       <Select
-
                         value={voucherData.project}
-
                         onValueChange={(value) => handleInputChange("project", value)}
-
                       >
-
                         <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600 text-center font-bold">
-
                           <SelectValue placeholder="Select Project" />
-
                         </SelectTrigger>
-
                         <SelectContent>
-
                           {projects.map((project, index) => (
-
                             <SelectItem key={`project-${index}-${project.replace(/\s+/g, "-")}`} value={project}>
-
                               {project}
-
                             </SelectItem>
-
                           ))}
-
                         </SelectContent>
-
                       </Select>
-
                     </div>
 
-                  </div>
-
-                  {/* Row 4: Beneficiary Name, PO Number */}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
-
-                    <div className="sm:col-span-8">
-
-                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY NAME (PAYER)</Label>
-
+                    {/* <div className="sm:col-span-4">
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor WhatsApp Number</Label>
                       <Input
-
-                        value={voucherData.beneficiaryName}
-
-                        onChange={(e) => handleInputChange("beneficiaryName", e.target.value)}
-
+                        value={voucherData.vendorNumber}
+                        onChange={(e) => handleInputChange("vendorNumber", e.target.value)}
                         className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
-                        placeholder=""
-
-                        required
-
+                        placeholder="Enter 10 digit number"
                       />
-
                     </div>
 
                     <div className="sm:col-span-4">
-
-                      <Label className="text-xs font-bold text-gray-700 uppercase">PO. NUMBER</Label>
-
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor Email</Label>
                       <Input
-
-                        value={voucherData.poNumber}
-
-                        onChange={(e) => handleInputChange("poNumber", e.target.value)}
-
+                        type="email"
+                        value={voucherData.vendorEmail}
+                        onChange={(e) => handleInputChange("vendorEmail", e.target.value)}
                         className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
+                        placeholder="Enter vendor email"
                       />
-
                     </div>
 
+                   */}
+
                   </div>
+
 
                   {/* Row 5: Beneficiary Account Details */}
 

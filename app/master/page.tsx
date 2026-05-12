@@ -414,7 +414,7 @@ export default function MasterDataManagement() {
                     placeholder="Enter company name"
                     onChange={handleChange}
                     value={formData.company_name}
-                    required
+                    
                   />
                 </div>
                 <div className="space-y-1">
@@ -424,7 +424,7 @@ export default function MasterDataManagement() {
                     placeholder="e.g. Bank Transfer, Cash"
                     onChange={handleChange}
                     value={formData.transaction_type}
-                    required
+                    
                   />
                 </div>
                 <div className="space-y-1">

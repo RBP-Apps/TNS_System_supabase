@@ -331,19 +331,6 @@ export default function UserRegistration() {
             </div>
           </div>
 
-          {/* Clear Filters Button */}
-          <div className="flex justify-end pt-2 border-t border-gray-100">
-            <button
-              onClick={() => {
-                setFilterRole("")
-                setSearchTerm("")
-              }}
-              className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 flex items-center gap-2 text-sm font-medium transition-colors"
-            >
-              <X size={16} />
-              Clear Filters
-            </button>
-          </div>
         </div>
 
         {/* ================= DESKTOP TABLE ================= */}
@@ -409,9 +396,7 @@ export default function UserRegistration() {
                             className="border border-gray-300 rounded px-3 py-1.5 focus:ring-2 focus:ring-purple-500"
                           >
                             <option value="user">user</option>
-                            {/* <option value="USER">USER</option> */}
                             <option value="admin">admin</option>
-                            {/* <option value="ADMIN">ADMIN</option> */}
                           </select>
                         ) : (
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${
@@ -568,9 +553,7 @@ export default function UserRegistration() {
                     onChange={handleChange}
                   >
                     <option value="USER">USER</option>
-                    {/* <option value="user">user</option> */}
                     <option value="ADMIN">ADMIN</option>
-                    {/* <option value="admin">admin</option> */}
                   </select>
                   <p className="text-xs text-gray-500 mt-1.5">Admins can access Dashboard and User Management.</p>
                 </div>
