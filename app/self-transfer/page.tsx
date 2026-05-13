@@ -127,7 +127,7 @@ export default function SelfTransferPage() {
     dateOfPayment: new Date().toISOString().split("T")[0],
     amount: "",
     amountInWords: "",
-    transactionType: "",
+    transactionType: "Contra",
     purposeOfPayment: "",
     project: "",
     poNumber: "",
@@ -422,7 +422,7 @@ export default function SelfTransferPage() {
 
       if (error) throw error
 
-      alert("Self Transfer record added successfully!")
+      alert("Contra added successfully!")
       setFormData({
         beneficiaryName: "",
         companyName: "",
@@ -447,7 +447,7 @@ export default function SelfTransferPage() {
         vendorEmail: "",
       })
     } catch (error: any) {
-      console.error("Error adding self transfer:", error)
+      console.error("Error adding Contra:", error)
       alert("Failed to add record: " + error.message)
     } finally {
       setIsSubmitting(false)
@@ -491,7 +491,7 @@ export default function SelfTransferPage() {
         <form onSubmit={handleSubmit}>
           <Card className="shadow-xl border-0 bg-white">
             <CardHeader className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-t-lg">
-              <CardTitle className="text-center">Self Transfer Entry Form</CardTitle>
+              <CardTitle className="text-center">CONTRA ENTRY FORM</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="bg-white border-2 border-gray-800 p-4 space-y-6">
@@ -563,7 +563,7 @@ export default function SelfTransferPage() {
                       className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
                     />
                   </div>
-                  <div>
+                  {/* <div>
                     <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
                     <Select value={formData.transactionType} onValueChange={(v) => handleInputChange("transactionType", v)}>
                       <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
@@ -573,7 +573,19 @@ export default function SelfTransferPage() {
                         {transactionTypes.map((t, i) => <SelectItem key={i} value={t}>{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
+
+
+                  <div>
+  <Label className="text-xs font-bold text-gray-700 uppercase">
+    TRANSACTION TYPE
+  </Label>
+
+  {/* Fixed Value */}
+  <div className="border-0 border-b border-gray-400 rounded-none px-1 py-2 h-8 text-sm flex items-center text-gray-800 font-medium">
+    Contra
+  </div>
+</div>
                   <div>
                     <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
                     <Input

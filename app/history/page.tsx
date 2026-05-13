@@ -1771,7 +1771,7 @@ export default function HistoryPage() {
               className="bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100 text-xs sm:text-sm"
             >
               <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-              Self Transfer
+              Contra
             </Button>
             {userRole.toLowerCase() === "admin" && (
               <>
@@ -1950,9 +1950,9 @@ export default function HistoryPage() {
                         <SelectValue placeholder="Record Type" className="text-black" />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        <SelectItem value="Debit">Debit (Vouchers)</SelectItem>
-                        <SelectItem value="Credit">Credit (Payments) Receipt  </SelectItem>
-                        <SelectItem value="Transfer">Self Inter Transfer</SelectItem>
+                        <SelectItem value="Debit">Payment Vouchers</SelectItem>
+                        <SelectItem value="Credit">Receipt      Vouchers </SelectItem>
+                        <SelectItem value="Transfer">Contra</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

@@ -127,7 +127,7 @@ export default function AddCreditPage() {
     dateOfPayment: new Date().toISOString().split("T")[0],
     amount: "",
     amountInWords: "",
-    transactionType: "",
+    transactionType: "Receipt",
     purposeOfPayment: "",
     project: "",
     poNumber: "",
@@ -478,7 +478,7 @@ export default function AddCreditPage() {
                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Voucher
             </Button>
             <Button onClick={() => router.push("/self-transfer")} variant="outline" className="bg-teal-50 border-teal-200 text-teal-700">
-              <RefreshCw className="mr-2 h-4 w-4" /> Self Transfer
+              <RefreshCw className="mr-2 h-4 w-4" /> Contra
             </Button>
             <Button onClick={() => router.push("/history")} variant="outline" className="bg-green-50 border-green-200 text-green-700">
               <History className="mr-2 h-4 w-4" /> History
@@ -589,7 +589,17 @@ export default function AddCreditPage() {
                       className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
                     />
                   </div>
-                  <div>
+                 <div>
+  <Label className="text-xs font-bold text-gray-700 uppercase">
+    TRANSACTION TYPE
+  </Label>
+
+  {/* Fixed Value */}
+  <div className="border-0 border-b border-gray-400 rounded-none px-1 py-2 h-8 text-sm flex items-center text-gray-800 font-medium">
+    Receipt
+  </div>
+</div>
+                  {/* <div>
                     <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
                     <Select value={formData.transactionType} onValueChange={(v) => handleInputChange("transactionType", v)}>
                       <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600">
@@ -599,7 +609,7 @@ export default function AddCreditPage() {
                         {transactionTypes.map((t, i) => <SelectItem key={i} value={t}>{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                   <div>
                     <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
                     <Input

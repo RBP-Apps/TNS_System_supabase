@@ -262,7 +262,7 @@ export default function DashboardPage() {
                 className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-xs sm:text-sm flex-1 sm:flex-none"
               >
                 <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                New Voucher
+                Payment Voucher
               </Button>
               <Button
                 onClick={() => router.push("/credit")}

@@ -184,7 +184,7 @@ export default function VoucherPage() {
 
     bankAccount: "AXIS BANK LTD- CC A/C 8711-TANAY",
 
-    transactionType: "",
+    transactionType: "Payment",
 
     purposeOfPayment: "",
 
@@ -1847,7 +1847,7 @@ export default function VoucherPage() {
                 className="bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100 text-sm md:text-base"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Self Transfer
+                Contra
               </Button>
 
               <Button
@@ -2147,7 +2147,7 @@ export default function VoucherPage() {
 
                     </div>
 
-                    <div className="sm:col-span-4">
+                    {/* <div className="sm:col-span-4">
                       <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
                       <Select
                         value={voucherData.transactionType}
@@ -2164,7 +2164,18 @@ export default function VoucherPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div> */}
+
+                    <div className="sm:col-span-4">
+  <Label className="text-xs font-bold text-gray-700 uppercase">
+    TRANSACTION TYPE
+  </Label>
+
+  {/* Fixed Value */}
+  <div className="border-0 border-b border-gray-400 rounded-none px-1 py-2 h-8 text-sm flex items-center text-gray-800 font-medium">
+    Payment
+  </div>
+</div>
 
                     <div className="sm:col-span-4">
                       <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
