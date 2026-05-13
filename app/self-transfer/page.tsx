@@ -312,7 +312,7 @@ export default function SelfTransferPage() {
         doc.setTextColor(...colors.primary)
         doc.text(data.companyName || "COMPANY NAME", pageWidth / 2, currentY + 8, { align: "center" })
         doc.setFontSize(12)
-        doc.text("SELF INTER TRANSFER VOUCHER", pageWidth / 2, currentY + 16, { align: "center" })
+        doc.text("CONTRA VOUCHER", pageWidth / 2, currentY + 16, { align: "center" })
 
         currentY += 28
 
@@ -469,7 +469,7 @@ export default function SelfTransferPage() {
               <RefreshCw className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">Self Inter Transfer</h1>
+              <h1 className="text-xl font-bold text-gray-800">Contra Voucher</h1>
               <p className="text-sm text-gray-600">Logged in as: {username}</p>
             </div>
           </div>
@@ -491,7 +491,7 @@ export default function SelfTransferPage() {
         <form onSubmit={handleSubmit}>
           <Card className="shadow-xl border-0 bg-white">
             <CardHeader className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-t-lg">
-              <CardTitle className="text-center">CONTRA ENTRY FORM</CardTitle>
+              <CardTitle className="text-center">CONTRA VOUCHER</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="bg-white border-2 border-gray-800 p-4 space-y-6">

@@ -74,7 +74,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
         <div className="p-6 sm:p-8">
           <div className="flex justify-between items-center mb-6 border-b pb-4">
             <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">
-              Edit {editVoucher.recordType === "Credit" ? "Credit Entry" : editVoucher.recordType === "Transfer" ? "Self Inter Transfer" : "Voucher"}: {editVoucher.voucherNo || editVoucher.id}
+              Edit {editVoucher.recordType === "Credit" ? "Credit Entry" : editVoucher.recordType === "Transfer" ? "CONTRA" : "Voucher"}: {editVoucher.voucherNo || editVoucher.id}
             </h2>
             <Button onClick={onClose} variant="ghost" size="sm" className="text-gray-500 hover:text-red-600">
               <X className="h-5 w-5" />

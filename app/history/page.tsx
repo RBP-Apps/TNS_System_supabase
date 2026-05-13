@@ -638,7 +638,7 @@ export default function HistoryPage() {
 
       let voucherTitle = "BANK PAYMENT VOUCHER"
       if (isCredit) voucherTitle = "RECEIPT VOUCHER"
-      else if (isTransfer) voucherTitle = "SELF INTER TRANSFER VOUCHER"
+      else if (isTransfer) voucherTitle = "CONTRA VOUCHER"
 
       doc.setFontSize(12)
       doc.setTextColor(...colors.secondary)
