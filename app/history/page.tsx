@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { LogOut, History, Save, Building2,DollarSign , ArrowLeft  , RefreshCw , X} from "lucide-react"
+import { LogOut, History, Save, Building2, DollarSign, ArrowLeft, RefreshCw, X } from "lucide-react"
 
 import {
   FileText,
@@ -337,7 +337,7 @@ export default function HistoryPage() {
       let actualTableName = "History"
       if (recordType === "Credit") actualTableName = "Credit"
       else if (recordType === "Transfer") actualTableName = "SelfTransfer"
-      
+
       let mainQuery = supabase.from(actualTableName).select(COLUMNS, { count: "exact" })
       let amountQuery = supabase.from(actualTableName).select("amount")
 
@@ -347,24 +347,24 @@ export default function HistoryPage() {
         if (searchFilter) {
           q = q.or(searchFilter)
         }
-        
+
         if (selectedCompany !== "all") {
           q = q.eq("company_name", selectedCompany)
         }
-        
+
         // These columns only exist in the Debit (History) table
         if (recordType === "Debit") {
           if (selectedProject !== "all") q = q.eq("project", selectedProject)
           if (selectedPurpose !== "all") q = q.eq("purpose_of_payment", selectedPurpose)
           if (selectedTransactionType !== "all") q = q.eq("transaction_type", selectedTransactionType)
         }
-        
+
         if (selectedName !== "all") q = q.eq("beneficiary_name", selectedName)
-        
+
         // Both tables have created_date
         if (dateFrom) q = q.gte("created_date", dateFrom)
         if (dateTo) q = q.lte("created_date", `${dateTo}T23:59:59`) // Ensure it includes the whole day
-        
+
         return q
       }
 
@@ -1647,12 +1647,25 @@ export default function HistoryPage() {
       const pageHeight = 210
 
       // Pagination setup
-      const rowsPerPage = 22
+      const rowsPerPage = 28
       const totalPages = Math.max(
         Math.ceil(debitData.length / rowsPerPage),
         Math.ceil(creditData.length / rowsPerPage),
         1
       )
+
+      // Calculate totals for the full dataset
+      const debitTotal = debitData.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+      const creditTotal = creditData.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+
+      const formatDate = (dateString: string) => {
+        if (!dateString) return ""
+        try {
+          return new Date(dateString).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+        } catch {
+          return dateString
+        }
+      }
 
       for (let p = 0; p < totalPages; p++) {
         if (p > 0) doc.addPage()
@@ -1667,19 +1680,53 @@ export default function HistoryPage() {
 
         const debitSlice = debitData.slice(p * rowsPerPage, (p + 1) * rowsPerPage)
         const creditSlice = creditData.slice(p * rowsPerPage, (p + 1) * rowsPerPage)
+        const isLastPage = p === totalPages - 1
 
         // Debit Table (Left)
+        const debitBody: any[] = debitSlice.map((d, i) => [
+          p * rowsPerPage + i + 1,
+          d.beneficiary_name || "",
+          // d.company_name || "",
+          (d.company_name || "").split(" ").slice(0, 2).join(" "),
+          formatDate(d.date_of_payment || d.created_date || ""),
+          { content: Number(d.amount).toLocaleString("en-IN"), styles: { halign: 'right' } }
+        ])
+
+        // Add total row on the last page
+        if (isLastPage) {
+          debitBody.push([
+            { content: "TOTAL", colSpan: 4, styles: { fontStyle: 'bold', fillColor: [219, 234, 254], textColor: [30, 58, 138] } },
+            { content: debitTotal.toLocaleString("en-IN"), styles: { fontStyle: 'bold', halign: 'right', fillColor: [219, 234, 254], textColor: [30, 58, 138] } }
+          ])
+        }
+
         autoTable(doc, {
           startY: 25,
-          head: [['S.N.', 'Beneficiary Name (Debit)', 'Amount']],
-          body: debitSlice.map((d, i) => [p * rowsPerPage + i + 1, d.beneficiary_name, Number(d.amount).toLocaleString("en-IN")]),
-          margin: { right: pageWidth / 2 + 5, left: 10 },
-          styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
+          head: [['S.N.', 'Beneficiary Name (Debit)', 'Company Name', 'Date', 'Amount']],
+          body: debitBody,
+
+          // margin: { left: 8, right: 152 },
+          // tableWidth: 135,
+          margin: { left: 6, right: 150 },
+tableWidth: 141,
+theme: 'grid',
+          styles: { fontSize: 6, cellPadding: 1.5, lineWidth: 0.1 },
           headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+
+          // columnStyles: {
+          //   0: { cellWidth: 8 },
+          //   1: { cellWidth: 42 },
+          //   2: { cellWidth: 18 },
+          //   3: { cellWidth: 18 },
+          //   4: { cellWidth: 22, halign: 'right' }
+          // },
           columnStyles: {
-            0: { cellWidth: 15 },
-            2: { cellWidth: 30, halign: 'right' }
-          },
+  0: { cellWidth: 10 },
+  1: { cellWidth: 55 },
+  2: { cellWidth: 30 },
+  3: { cellWidth: 20 },
+  4: { cellWidth: 26, halign: 'right' }
+},
           didDrawPage: (data) => {
             doc.setFontSize(12)
             doc.setTextColor(59, 130, 246)
@@ -1688,17 +1735,51 @@ export default function HistoryPage() {
         })
 
         // Credit Table (Right)
+        const creditBody: any[] = creditSlice.map((d, i) => [
+          p * rowsPerPage + i + 1,
+          d.beneficiary_name || "",
+          // d.company_name || "",
+          (d.company_name || "").split(" ").slice(0, 2).join(" "),
+          formatDate(d.date_of_payment || d.created_date || ""),
+          { content: Number(d.amount).toLocaleString("en-IN"), styles: { halign: 'right' } }
+        ])
+
+        // Add total row on the last page
+        if (isLastPage) {
+          creditBody.push([
+            { content: "TOTAL", colSpan: 4, styles: { fontStyle: 'bold', fillColor: [254, 215, 170], textColor: [120, 53, 15] } },
+            { content: creditTotal.toLocaleString("en-IN"), styles: { fontStyle: 'bold', halign: 'right', fillColor: [254, 215, 170], textColor: [120, 53, 15] } }
+          ])
+        }
+
         autoTable(doc, {
           startY: 25,
-          head: [['S.N.', 'Beneficiary Name (Credit)', 'Amount']],
-          body: creditSlice.map((d, i) => [p * rowsPerPage + i + 1, d.beneficiary_name, Number(d.amount).toLocaleString("en-IN")]),
-          margin: { left: pageWidth / 2 + 5, right: 10 },
-          styles: { fontSize: 8, cellPadding: 2, lineWidth: 0.1 },
+          head: [['S.N.', 'Beneficiary Name (Credit)', 'Company Name', 'Date', 'Amount']],
+          body: creditBody,
+          // margin: { left: pageWidth / 2 + 5, right: 10 },
+          // styles: { fontSize: 7, cellPadding: 2, lineWidth: 0.1 },
+          // margin: { left: 154, right: 8 },
+          // tableWidth: 135,
+          margin: { left: 150, right: 6 },
+tableWidth: 141,
+theme: 'grid',
+          styles: { fontSize: 6, cellPadding: 1.5, lineWidth: 0.1 },
           headStyles: { fillColor: [249, 115, 22], textColor: 255 },
+
+          // columnStyles: {
+          //   0: { cellWidth: 8 },
+          //   1: { cellWidth: 42 },
+          //   2: { cellWidth: 18 },
+          //   3: { cellWidth: 18 },
+          //   4: { cellWidth: 22, halign: 'right' }
+          // },
           columnStyles: {
-            0: { cellWidth: 15 },
-            2: { cellWidth: 30, halign: 'right' }
-          },
+  0: { cellWidth: 10 },
+  1: { cellWidth: 55 },
+  2: { cellWidth: 30 },
+  3: { cellWidth: 20 },
+  4: { cellWidth: 26, halign: 'right' }
+},
           didDrawPage: (data) => {
             doc.setFontSize(12)
             doc.setTextColor(249, 115, 22)
@@ -1744,9 +1825,9 @@ export default function HistoryPage() {
               <p className="text-sm text-gray-600">Logged in as: {username} ({userRole})</p>
             </div>
           </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-             
-              <Button
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+
+            <Button
               onClick={() => router.push("/voucher")}
               variant="outline"
               size="sm"
@@ -1823,39 +1904,39 @@ export default function HistoryPage() {
       <div className="mx-auto px-4 sm:px-4 py-8 space-y-4">
         <div className="bg-slate-100/80 py-4 -mx-4 px-4 rounded-b-xl border-b shadow-sm">
           <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1 w-full">
-            <VoucherFilters
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              selectedName={selectedName}
-              setSelectedName={setSelectedName}
-              selectedCompany={selectedCompany}
-              setSelectedCompany={setSelectedCompany}
-              selectedProject={selectedProject}
-              setSelectedProject={setSelectedProject}
-              selectedPurpose={selectedPurpose}
-              setSelectedPurpose={setSelectedPurpose}
-              selectedTransactionType={selectedTransactionType}
-              setSelectedTransactionType={setSelectedTransactionType}
-              dateFrom={dateFrom}
-              setDateFrom={setDateFrom}
-              dateTo={dateTo}
-              setDateTo={setDateTo}
-              amountFrom={amountFrom}
-              setAmountFrom={setAmountFrom}
-              amountTo={amountTo}
-              setAmountTo={setAmountTo}
-              activeFiltersCount={activeFiltersCount}
-              clearAllFilters={clearAllFilters}
-              uniqueNames={uniqueNames}
-              uniqueCompanies={uniqueCompanies}
-              uniqueProjects={uniqueProjects}
-              uniquePurposes={uniquePurposes}
-              uniqueTransactionTypes={uniqueTransactionTypes}
-            />
+            <div className="flex-1 w-full">
+              <VoucherFilters
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                selectedName={selectedName}
+                setSelectedName={setSelectedName}
+                selectedCompany={selectedCompany}
+                setSelectedCompany={setSelectedCompany}
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                selectedPurpose={selectedPurpose}
+                setSelectedPurpose={setSelectedPurpose}
+                selectedTransactionType={selectedTransactionType}
+                setSelectedTransactionType={setSelectedTransactionType}
+                dateFrom={dateFrom}
+                setDateFrom={setDateFrom}
+                dateTo={dateTo}
+                setDateTo={setDateTo}
+                amountFrom={amountFrom}
+                setAmountFrom={setAmountFrom}
+                amountTo={amountTo}
+                setAmountTo={setAmountTo}
+                activeFiltersCount={activeFiltersCount}
+                clearAllFilters={clearAllFilters}
+                uniqueNames={uniqueNames}
+                uniqueCompanies={uniqueCompanies}
+                uniqueProjects={uniqueProjects}
+                uniquePurposes={uniquePurposes}
+                uniqueTransactionTypes={uniqueTransactionTypes}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
         {/* Pagination Controls */}
         <div className="flex items-center justify-between bg-white p-3 rounded-lg border shadow-sm">
@@ -2001,7 +2082,7 @@ export default function HistoryPage() {
               </div>
             </CardHeader>
 
-            
+
             <CardContent className="p-0">
               {/* Mobile Card View for small screens with scrollable frame */}
               <div className="block sm:hidden">
@@ -2279,7 +2360,6 @@ export default function HistoryPage() {
         )}
       </div>
 
-      {/* Edit Modal */}
       {/* Edit Modal */}
       <EditVoucherModal
         isOpen={isEditModalOpen}
