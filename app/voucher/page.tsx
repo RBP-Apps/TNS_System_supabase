@@ -504,7 +504,7 @@ export default function VoucherPage() {
       // console.log("Clearing autofilled fields...")
       handleInputChange("companyName", "")
       handleInputChange("bankAcFrom", "")
-      handleInputChange("transactionType", "")
+      handleInputChange("transactionType", "Payment")
       handleInputChange("poNumber", "")
       handleInputChange("utrNumber", "")
       handleInputChange("beneficiaryAccountName", "")
@@ -530,10 +530,6 @@ export default function VoucherPage() {
         setTimeout(() => {
           handleInputChange("bankAcFrom", beneficiaryData.bank_ac_from)
         }, 150)
-      }
-
-      if (beneficiaryData.transaction_type) {
-        handleInputChange("transactionType", beneficiaryData.transaction_type)
       }
 
       if (beneficiaryData.beneficiary_ac_name) {
@@ -1739,7 +1735,7 @@ export default function VoucherPage() {
         voucherNo: "",
         bankAcFrom: "",
         companyName: "",
-        transactionType: "",
+        transactionType: "Payment",
         purposeOfPayment: "",
         project: "",
         beneficiaryName: "",

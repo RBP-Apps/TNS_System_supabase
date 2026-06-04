@@ -256,7 +256,6 @@ export default function SelfTransferPage() {
       if (data.bank_ac_from) {
         setTimeout(() => handleInputChange("bankAcFrom", data.bank_ac_from), 150)
       }
-      if (data.transaction_type) handleInputChange("transactionType", data.transaction_type)
       if (data.beneficiary_ac_name) handleInputChange("beneficiaryAccountName", data.beneficiary_ac_name)
       if (data.beneficiary_ac_number) handleInputChange("beneficiaryAccountNumber", data.beneficiary_ac_number)
       if (data.beneficiary_bank_name) handleInputChange("beneficiaryBankName", data.beneficiary_bank_name)
@@ -430,7 +429,7 @@ export default function SelfTransferPage() {
         dateOfPayment: new Date().toISOString().split("T")[0],
         amount: "",
         amountInWords: "",
-        transactionType: "",
+        transactionType: "Contra",
         purposeOfPayment: "",
         project: "",
         poNumber: "",
