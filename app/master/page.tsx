@@ -159,41 +159,19 @@ export default function MasterDataManagement() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => router.push("/dashboard")}
-                className="bg-slate-50 hover:bg-slate-100"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" /> Back
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <Database className="h-5 w-5 text-indigo-600" />
-                  Master Data Management
-                </h1>
-                <p className="text-xs text-slate-500">Manage companies, projects, and accounts</p>
-              </div>
-            </div>
-
-            <Button
-              onClick={() => setOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all active:scale-95"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Record
-            </Button>
-          </div>
+    <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+         
         </div>
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all active:scale-95"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Record
+        </Button>
       </div>
-
-      <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Search & Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
@@ -388,7 +366,7 @@ export default function MasterDataManagement() {
             </div>
           </CardContent>
         </Card>
-      </div>
+
 
       {/* Add Modal */}
       {open && (

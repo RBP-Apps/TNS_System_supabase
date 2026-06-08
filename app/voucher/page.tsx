@@ -248,7 +248,6 @@ export default function VoucherPage() {
 
       const filtered = filterBankAccountsByCompany(value, bankAccounts)
 
-      // console.log("Final filtered accounts:", filtered)
 
       setFilteredBankAccounts(filtered)
 
@@ -268,21 +267,13 @@ export default function VoucherPage() {
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: any[]) => {
 
-    // console.log("=== FILTERING DEBUG ===")
-
-    // console.log("Selected Company:", selectedCompany)
-
-    // console.log("All Bank Accounts:", allBankAccounts)
-
     if (!selectedCompany || !allBankAccounts.length) {
 
-      // console.log("No company selected or no bank accounts available")
 
       return allBankAccounts
 
     }
 
-    // More flexible keyword extraction
 
     const companyKeywords = selectedCompany.split(' ').filter(word => {
 
@@ -292,19 +283,16 @@ export default function VoucherPage() {
 
         !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY', '(INDIA)'].includes(upperWord)
 
-      // console.log(`Word: "${word}" -> Valid: ${isValidKeyword}`)
+    
 
       return isValidKeyword
 
     })
 
-    // console.log("Keywords to match:", companyKeywords)
 
-    // Try different matching strategies
 
     const strategies = [
 
-      // Strategy 1: All keywords must be present (strict)
 
       (account: string) => {
 
@@ -316,7 +304,6 @@ export default function VoucherPage() {
 
         )
 
-        // console.log(`Strategy 1 - Account: "${account}" -> Match all keywords: ${allMatch}`)
 
         return allMatch
 
@@ -336,8 +323,7 @@ export default function VoucherPage() {
 
         const matches = matchCount >= Math.min(2, companyKeywords.length)
 
-        // console.log(`Strategy 2 - Account: "${account}" -> Match count: ${matchCount}/${companyKeywords.length} -> Matches: ${matches}`)
-
+    
         return matches
 
       },
@@ -354,7 +340,6 @@ export default function VoucherPage() {
 
         )
 
-        // console.log(`Strategy 3 - Account: "${account}" -> Any match: ${anyMatch}`)
 
         return anyMatch
 
@@ -366,25 +351,20 @@ export default function VoucherPage() {
 
     for (let i = 0; i < strategies.length; i++) {
 
-      // console.log(`\n--- Trying Strategy ${i + 1} ---`)
 
       const filtered = allBankAccounts.filter(strategies[i])
 
-      // console.log(`Strategy ${i + 1} results:`, filtered)
 
       if (filtered.length > 0) {
 
-        // console.log(`✅ Strategy ${i + 1} found ${filtered.length} matches`)
 
         return filtered
 
       }
 
-      // console.log(`❌ Strategy ${i + 1} found no matches`)
 
     }
 
-    // console.log("⚠️ No strategy found matches, returning all accounts")
 
     return allBankAccounts
 
@@ -392,7 +372,6 @@ export default function VoucherPage() {
 
   const fetchCompanyNamesFromMaster = async () => {
     try {
-      // console.log("Fetching company names from Supabase...")
       const { data, error } = await supabase.from('master').select('company_name')
       if (error) throw error
 
@@ -407,7 +386,6 @@ export default function VoucherPage() {
 
   const fetchBankAccountsFromMaster = async () => {
     try {
-      // console.log("Fetching bank accounts from Supabase...")
       const { data, error } = await supabase.from('master').select('bank_ac_from')
       if (error) throw error
 
@@ -423,7 +401,6 @@ export default function VoucherPage() {
 
   const fetchTransactionTypesFromMaster = async () => {
     try {
-      // console.log("Fetching transaction types from Supabase...")
       const { data, error } = await supabase.from('master').select('transaction_type')
       if (error) throw error
 
@@ -438,7 +415,6 @@ export default function VoucherPage() {
 
   const fetchProjectsFromMaster = async () => {
     try {
-      // console.log("Fetching projects from Supabase...")
       const { data, error } = await supabase.from('master').select('project')
       if (error) throw error
 
@@ -453,10 +429,8 @@ export default function VoucherPage() {
 
   const fetchBeneficiariesFromHistory = async () => {
     try {
-      // console.log("Fetching beneficiaries from History table...")
 
-      // Get the latest details for each beneficiary
-      // We'll fetch all and then filter for uniqueness in JS to get the latest
+    
       const { data, error } = await supabase
         .from('History')
         .select(`
@@ -495,13 +469,10 @@ export default function VoucherPage() {
   }
 
   const handleBeneficiarySelection = (name: string) => {
-    // console.log("Beneficiary selected:", name)
 
-    // Update the main beneficiary name field
     handleInputChange("beneficiaryName", name)
 
     if (!name) {
-      // console.log("Clearing autofilled fields...")
       handleInputChange("companyName", "")
       handleInputChange("bankAcFrom", "")
       handleInputChange("transactionType", "Payment")
@@ -553,7 +524,6 @@ export default function VoucherPage() {
 
   const fetchPaymentFromCompaniesFromMaster = async () => {
     try {
-      // console.log("Fetching payment from companies from Supabase...")
       const { data, error } = await supabase.from('master').select('payment_from_company')
       if (error) throw error
 
@@ -1762,137 +1732,10 @@ export default function VoucherPage() {
     }
   }
 
-
   return (
-
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50">
-
-      {/* Header */}
-
-      <div className="bg-white shadow-sm border-b">
-
-        <div className="container mx-auto px-4 py-4">
-
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-
-            <div className="flex items-center space-x-3">
-
-              <div className="bg-blue-600 p-2 rounded-lg">
-
-                <Building2 className="h-6 w-6 text-white" />
-
-              </div>
-
-              <div>
-
-                <h1 className="text-xl font-bold text-gray-800">TNS Payment System</h1>
-
-                <p className="text-sm text-gray-600">
-
-                  Welcome, {username} ({userRole})
-
-                </p>
-
-              </div>
-
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-2">
-
-              {userRole.toLowerCase() === "admin" && (
-                <>
-                  <Button
-                    onClick={() => router.push("/dashboard")}
-                    variant="outline"
-                    className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 text-sm md:text-base"
-                  >
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    Dashboard
-                  </Button>
-                  <Button
-                    onClick={() => router.push("/master")}
-                    variant="outline"
-                    className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 text-sm md:text-base"
-                  >
-                    <Database className="mr-2 h-4 w-4" />
-                    Master
-                  </Button>
-                  <Button
-                    onClick={() => router.push("/users")}
-                    variant="outline"
-                    className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-sm md:text-base"
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Users
-                  </Button>
-                </>
-              )}
-
-              <Button
-                onClick={() => router.push("/credit")}
-                variant="outline"
-                className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-sm md:text-base"
-              >
-                <DollarSign className="mr-2 h-4 w-4" />
-                Add Receipt
-              </Button>
-
-              <Button
-                onClick={() => router.push("/self-transfer")}
-                variant="outline"
-                className="bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100 text-sm md:text-base"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Contra
-              </Button>
-
-              <Button
-
-                onClick={() => router.push("/history")}
-
-                variant="outline"
-
-                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-sm md:text-base"
-
-              >
-
-                <History className="mr-2 h-4 w-4" />
-
-                History
-
-              </Button>
-
-              <Button
-
-                onClick={handleLogout}
-
-                variant="outline"
-
-                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-sm md:text-base"
-
-              >
-
-                <LogOut className="mr-2 h-4 w-4" />
-
-                Logout
-
-              </Button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* Main Content */}
-
-      <div className="container mx-auto px-2 sm:px-4 py-4 md:py-8 max-w-4xl">
-
-        <form onSubmit={handleSubmit}>
-
-          <Card className="shadow-xl border-0 bg-white">
+    <div className="container mx-auto px-2 sm:px-4 max-w-4xl">
+      <form onSubmit={handleSubmit}>
+        <Card className="shadow-xl border-0 bg-white">
 
             {/* Voucher Header */}
 
@@ -2522,8 +2365,6 @@ export default function VoucherPage() {
         </form>
 
       </div>
-
-    </div>
 
   )
 

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { LogOut, History, Save, Building2, DollarSign, ArrowLeft, RefreshCw, X } from "lucide-react"
+import { LogOut, History, Save, Building2, DollarSign, ArrowLeft, RefreshCw, X, ArrowUpRight, ArrowDownLeft } from "lucide-react"
 
 import {
   FileText,
@@ -104,6 +104,7 @@ export default function HistoryPage() {
   const hasLoadedRef = useRef(false)
   const skipNextFetchRef = useRef(false)
   const filterSignatureRef = useRef("")
+  const fetchIdRef = useRef(0)
 
   // Master data state for dropdowns
   const [masterData, setMasterData] = useState<MasterData>({
@@ -159,37 +160,10 @@ export default function HistoryPage() {
   }, [amountTo])
 
   // Single merged effect: prevents double-fetch when filters change
-  // Uses a filter-signature ref to distinguish filter-change vs page-change
   useEffect(() => {
-    const sig = [
-      debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose,
-      selectedTransactionType, selectedName, dateFrom, dateTo,
-      debouncedAmountFrom, debouncedAmountTo, recordType
-    ].join("|")
-
-    const filterChanged = sig !== filterSignatureRef.current
-    if (filterChanged) {
-      filterSignatureRef.current = sig
-      if (currentPage !== 1) {
-        // Mark next effect fire (triggered by setCurrentPage) as a skip
-        skipNextFetchRef.current = true
-        setCurrentPage(1)
-      }
-      // Fetch page 1 immediately — no need to wait for state update
-      fetchRealHistoryData(1)
-      return
-    }
-
-    // This fire was caused by setCurrentPage(1) from a filter change — skip it
-    if (skipNextFetchRef.current) {
-      skipNextFetchRef.current = false
-      return
-    }
-
-    // Normal page navigation
-    fetchRealHistoryData(currentPage)
+    fetchRealHistoryData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose, selectedTransactionType, selectedName, dateFrom, dateTo, debouncedAmountFrom, debouncedAmountTo, recordType])
+  }, [debouncedSearchTerm, selectedCompany, selectedProject, selectedPurpose, selectedTransactionType, selectedName, dateFrom, dateTo, debouncedAmountFrom, debouncedAmountTo, recordType])
 
   // Edit modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -290,7 +264,7 @@ export default function HistoryPage() {
     }
   }
 
-  const fetchRealHistoryData = async (page: number = currentPage) => {
+  const fetchRealHistoryData = async () => {
     // First load → show full-page spinner; subsequent → subtle refetch indicator
     if (!hasLoadedRef.current) {
       setLoading(true)
@@ -307,7 +281,7 @@ export default function HistoryPage() {
           searchFilter = `beneficiary_name.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`
         } else {
           // Transfer search
-          searchFilter = `beneficiary_name.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`
+          searchFilter = `beneficiary_ac_name.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`
         }
       }
 
@@ -321,15 +295,20 @@ export default function HistoryPage() {
           'beneficiary_ac_number', 'beneficiary_bank_name', 'beneficiary_bank_ifsc',
           'particulars', 'amount_in_words', 'entry_done_by', 'checked_by', 'approved_by'
         ].join(',')
-      } else {
-        // Same for Credit and Transfer
+      } else if (recordType === "Credit") {
         COLUMNS = [
           'id', 'created_date', 'date_of_payment', 'company_name',
           'beneficiary_name', 'amount', 'amount_in_words', 'bank_ac_from',
-          'purpose_of_payment', 'transaction_type', 'project', 'po_number',
-          'utr_number', 'beneficiary_ac_name', 'beneficiary_ac_number',
-          'beneficiary_bank_name', 'beneficiary_bank_ifsc', 'particulars',
-          'entry_done_by', 'checked_by', 'approved_by', 'pdf_link'
+          'purpose_of_payment', 'transaction_type', 'project', 'utr_number',
+          'particulars', 'entry_done_by', 'checked_by', 'pdf_link'
+        ].join(',')
+      } else if (recordType === "Transfer") {
+        COLUMNS = [
+          'id', 'created_date', 'date_of_payment', 'company_name',
+          'amount', 'amount_in_words', 'bank_ac_from', 'purpose_of_payment',
+          'transaction_type', 'po_number', 'utr_number', 'beneficiary_ac_name',
+          'beneficiary_ac_number', 'beneficiary_bank_name', 'beneficiary_bank_ifsc',
+          'particulars', 'entry_done_by', 'approved_by', 'pdf_link'
         ].join(',')
       }
 
@@ -339,11 +318,9 @@ export default function HistoryPage() {
       else if (recordType === "Transfer") actualTableName = "SelfTransfer"
 
       let mainQuery = supabase.from(actualTableName).select(COLUMNS, { count: "exact" })
-      let amountQuery = supabase.from(actualTableName).select("amount")
 
-      // Apply identical filters to both queries
+      // Apply filters
       const applyFilters = (q: any) => {
-        // Only apply search filter if we have a term
         if (searchFilter) {
           q = q.or(searchFilter)
         }
@@ -352,41 +329,99 @@ export default function HistoryPage() {
           q = q.eq("company_name", selectedCompany)
         }
 
-        // These columns only exist in the Debit (History) table
+        // These columns only exist in the Debit (History) and Credit tables
         if (recordType === "Debit") {
           if (selectedProject !== "all") q = q.eq("project", selectedProject)
           if (selectedPurpose !== "all") q = q.eq("purpose_of_payment", selectedPurpose)
           if (selectedTransactionType !== "all") q = q.eq("transaction_type", selectedTransactionType)
         }
 
-        if (selectedName !== "all") q = q.eq("beneficiary_name", selectedName)
+        if (selectedName !== "all") {
+          if (recordType === "Transfer") {
+            q = q.eq("beneficiary_ac_name", selectedName)
+          } else {
+            q = q.eq("beneficiary_name", selectedName)
+          }
+        }
 
-        // Both tables have created_date
-        if (dateFrom) q = q.gte("created_date", dateFrom)
-        if (dateTo) q = q.lte("created_date", `${dateTo}T23:59:59`) // Ensure it includes the whole day
+        // Filter by date_of_payment (Voucher Date)
+        if (dateFrom) q = q.gte("date_of_payment", dateFrom)
+        if (dateTo) q = q.lte("date_of_payment", dateTo)
 
         return q
       }
 
       mainQuery = applyFilters(mainQuery)
-      amountQuery = applyFilters(amountQuery)
 
-      // Run both queries in parallel — cuts wait time in half vs sequential
-      const [mainResult, amountResult] = await Promise.all([
-        mainQuery.order("created_date", { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1),
-        amountQuery
-      ])
+      // Track fetch task ID to avoid race conditions on tabs change / filters update
+      const currentFetchId = ++fetchIdRef.current
+
+      // Fetch first chunk (1000 records) to load the tab instantly
+      let start = 0
+      const CHUNK_SIZE = 1000
+
+      mainQuery = mainQuery.order("created_date", { ascending: false }).range(start, start + CHUNK_SIZE - 1)
+      const mainResult = await mainQuery
 
       if (mainResult.error) throw mainResult.error
 
-      if (mainResult.data) {
-        processRealSupabaseData(mainResult.data, recordType)
-        setTotalCount(mainResult.count || 0)
-      }
+      if (currentFetchId !== fetchIdRef.current) return
 
-      if (!amountResult.error && amountResult.data) {
-        const total = amountResult.data.reduce((sum, row) => sum + (Number.parseFloat(row.amount) || 0), 0)
-        setServerTotalAmount(total)
+      let loadedRecords = mainResult.data || []
+      processRealSupabaseData(loadedRecords, recordType)
+      setTotalCount(mainResult.count || loadedRecords.length)
+      
+      // Calculate sum locally to optimize database response time
+      let currentTotalAmount = loadedRecords.reduce((sum, row) => sum + (Number.parseFloat(row.amount) || 0), 0)
+      setServerTotalAmount(currentTotalAmount)
+
+      // If there are more records, fetch the rest in the background to keep tab switching fast
+      if (loadedRecords.length === CHUNK_SIZE) {
+        (async () => {
+          let hasMore = true
+          let currentStart = start + CHUNK_SIZE
+          
+          while (hasMore) {
+            if (currentFetchId !== fetchIdRef.current) {
+              break // Tab or filter changed, cancel background fetch
+            }
+
+            // Build fresh query builder
+            let bgQuery = supabase.from(actualTableName).select(COLUMNS)
+            bgQuery = applyFilters(bgQuery)
+            
+            const nextResult = await bgQuery
+              .order("created_date", { ascending: false })
+              .range(currentStart, currentStart + CHUNK_SIZE - 1)
+
+            if (nextResult.error) {
+              console.error("Background fetch error:", nextResult.error)
+              break
+            }
+
+            if (currentFetchId !== fetchIdRef.current) {
+              break // Tab or filter changed
+            }
+
+            const nextData = nextResult.data || []
+            if (nextData.length === 0) {
+              hasMore = false
+              break
+            }
+
+            loadedRecords = [...loadedRecords, ...nextData]
+            processRealSupabaseData(loadedRecords, recordType)
+            
+            currentTotalAmount += nextData.reduce((sum, row) => sum + (Number.parseFloat(row.amount) || 0), 0)
+            setServerTotalAmount(currentTotalAmount)
+
+            if (nextData.length < CHUNK_SIZE) {
+              hasMore = false
+            } else {
+              currentStart += CHUNK_SIZE
+            }
+          }
+        })()
       }
 
       hasLoadedRef.current = true
@@ -400,7 +435,6 @@ export default function HistoryPage() {
   }
 
   const processRealSupabaseData = useCallback((data: any[], currentRecordType: string) => {
-    // console.log("Processing data from Supabase...")
 
     if (!Array.isArray(data) || data.length === 0) {
       setVouchers([])
@@ -421,7 +455,7 @@ export default function HistoryPage() {
           purposeOfPayment: row.purpose_of_payment || "",
           transactionType: row.transaction_type || "",
           project: row.project || "",
-          beneficiaryName: row.beneficiary_name || "",
+          beneficiaryName: row.beneficiary_name || row.beneficiary_ac_name || "",
           poNumber: row.po_number || "",
           utrNumber: row.utr_number || "", // Added UTR for Credit
           beneficiaryAcName: row.beneficiary_ac_name || "",
@@ -444,7 +478,6 @@ export default function HistoryPage() {
       .filter((voucher): voucher is VoucherData => Boolean(voucher))
 
     setVouchers(mappedVouchers)
-    // console.log(`✅ Successfully loaded ${mappedVouchers.length} vouchers from ${currentRecordType} table!`)
   }, [])
 
   const updateVoucherInSupabase = async (voucher: VoucherData) => {
@@ -1065,7 +1098,6 @@ export default function HistoryPage() {
 
       const pdfUrl = publicUrlData.publicUrl
 
-      // console.log("PDF uploaded successfully:", pdfUrl)
 
       // Update voucher with new PDF link
       const updatedVoucher = {
@@ -1200,8 +1232,7 @@ export default function HistoryPage() {
           document.body.removeChild(link)
           window.URL.revokeObjectURL(url)
         } catch (fetchError) {
-          // console.log("Direct download failed, opening in new tab:", fetchError)
-          // Fallback: Open in new tab for user to download manually
+        
           const link = document.createElement("a")
           link.href = downloadUrl
           link.target = "_blank"
@@ -1215,19 +1246,45 @@ export default function HistoryPage() {
         const { jsPDF } = await import("jspdf")
         const doc = new jsPDF()
 
+        let titleHeader = "Bank Payment Voucher"
+        let filenamePrefix = "Payment_Voucher"
+        let voucherNumLabel = "Voucher Number"
+        let voucherNumValue = voucher.voucherNo
+
+        if (voucher.recordType === "Credit") {
+          titleHeader = "Receipt Voucher"
+          filenamePrefix = "Receipt_Voucher"
+          voucherNumLabel = "Voucher ID"
+          voucherNumValue = voucher.id
+        } else if (voucher.recordType === "Transfer") {
+          titleHeader = "Contra Voucher"
+          filenamePrefix = "Contra_Voucher"
+          voucherNumLabel = "Voucher ID"
+          voucherNumValue = voucher.id
+        }
+
         doc.setFont("helvetica")
         doc.setFontSize(16)
         doc.setTextColor(0, 0, 0)
         doc.text(voucher.companyName || "COMPANY NAME", 105, 20, { align: "center" })
 
         doc.setFontSize(12)
-        doc.text("Bank Payment Voucher - Complete Details", 105, 30, { align: "center" })
+        doc.text(`${titleHeader} - Complete Details`, 105, 30, { align: "center" })
 
         doc.rect(10, 35, 190, 250)
 
         let yPosition = 50
 
-        const addSection = (title: string, fields: Array<{ label: string; value: string }>) => {
+        const addSection = (title: string, fields: Array<{ label: string; value: any }>) => {
+          // Filter out fields that are empty or not applicable
+          const validFields = fields.filter((field) => {
+            if (!field.value) return false
+            const strVal = String(field.value).trim()
+            return strVal !== "" && strVal !== "N/A" && strVal !== "₹0" && strVal !== "₹NaN"
+          })
+
+          if (validFields.length === 0) return // Skip empty sections
+
           doc.setFontSize(10)
           doc.setFont("helvetica", "bold")
 
@@ -1240,7 +1297,7 @@ export default function HistoryPage() {
           doc.setFont("helvetica", "normal")
           doc.setFontSize(8)
 
-          fields.forEach((field) => {
+          validFields.forEach((field) => {
             if (yPosition > 270) {
               doc.addPage()
               yPosition = 20
@@ -1250,7 +1307,7 @@ export default function HistoryPage() {
             doc.text(field.label + ":", 20, yPosition)
 
             doc.setFont("helvetica", "normal")
-            const lines = doc.splitTextToSize(field.value || "N/A", 120)
+            const lines = doc.splitTextToSize(String(field.value), 120)
             doc.text(lines, 80, yPosition)
 
             yPosition += Math.max(6, lines.length * 4)
@@ -1264,7 +1321,7 @@ export default function HistoryPage() {
             label: "Timestamp",
             value: voucher.timestamp ? new Date(voucher.timestamp).toLocaleString("en-IN") : "N/A",
           },
-          { label: "Voucher Number", value: voucher.voucherNo },
+          { label: voucherNumLabel, value: voucherNumValue },
           { label: "Transaction Type", value: voucher.transactionType },
           { label: "Purpose", value: voucher.purposeOfPayment },
           { label: "Project", value: voucher.project },
@@ -1276,16 +1333,20 @@ export default function HistoryPage() {
         ])
 
         addSection("BENEFICIARY INFORMATION", [
-          { label: "Beneficiary Name (Paid To)", value: voucher.beneficiaryName },
+          {
+            label: voucher.recordType === "Credit" ? "Payer Name" : "Beneficiary Name",
+            value: voucher.beneficiaryName,
+          },
           { label: "PO Number", value: voucher.poNumber },
           { label: "Beneficiary A/C Name", value: voucher.beneficiaryAcName },
           { label: "Beneficiary A/C Number", value: voucher.beneficiaryAcNumber },
           { label: "Beneficiary Bank Name", value: voucher.beneficiaryBankName },
+          { label: "Beneficiary Bank IFSC", value: voucher.beneficiaryBankIfsc },
         ])
 
         addSection("FINANCIAL INFORMATION", [
           { label: "Particulars", value: voucher.particulars },
-          { label: "Amount", value: `₹${Number.parseFloat(voucher.amount).toLocaleString("en-IN")}` },
+          { label: "Amount", value: voucher.amount ? `₹${Number.parseFloat(voucher.amount).toLocaleString("en-IN")}` : "" },
           { label: "Amount in Words", value: voucher.amountInWords },
         ])
 
@@ -1303,7 +1364,7 @@ export default function HistoryPage() {
         doc.text(`Voucher ID: ${voucher.id}`, 20, doc.internal.pageSize.height - 15)
         doc.text("Complete History Database Export", 20, doc.internal.pageSize.height - 10)
 
-        doc.save(`Payment_Voucher_${voucher.voucherNo}_${Date.now()}.pdf`)
+        doc.save(`${filenamePrefix}_${voucherNumValue}_${Date.now()}.pdf`)
       }
     } catch (error) {
       console.error("Error downloading PDF:", error)
@@ -1357,7 +1418,7 @@ export default function HistoryPage() {
     }
 
     return (
-      <div className="mt-4 sm:mt-6 bg-gray-50 p-3 sm:p-4 rounded-lg">
+      <div className=" bg-gray-50  sm:p-4 rounded-lg">
         <h4 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">All Details from History Database</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm">
           {Object.entries(columnMapping).map(([key, label]) => (
@@ -1485,7 +1546,6 @@ export default function HistoryPage() {
       const limit = 1000
       let hasMore = true
 
-      // console.log("Starting bulk export fetch...")
 
       while (hasMore) {
         const tableName = recordType === "Debit" ? "History" : "Credit"
@@ -1500,8 +1560,8 @@ export default function HistoryPage() {
           if (selectedTransactionType !== "all") query = query.eq("transaction_type", selectedTransactionType)
         }
         if (selectedName !== "all") query = query.eq("beneficiary_name", selectedName)
-        if (dateFrom) query = query.gte("created_date", dateFrom)
-        if (dateTo) query = query.lte("created_date", dateTo)
+        if (dateFrom) query = query.gte("date_of_payment", dateFrom)
+        if (dateTo) query = query.lte("date_of_payment", dateTo)
         if (debouncedAmountFrom) query = query.gte("amount", debouncedAmountFrom)
         if (debouncedAmountTo) query = query.lte("amount", debouncedAmountTo)
 
@@ -1513,7 +1573,6 @@ export default function HistoryPage() {
 
         if (data && data.length > 0) {
           allData = [...allData, ...data]
-          // console.log(`Fetched ${allData.length} records...`)
           if (data.length < limit) {
             hasMore = false
           } else {
@@ -1627,8 +1686,8 @@ export default function HistoryPage() {
           if (selectedTransactionType !== "all") query = query.eq("transaction_type", selectedTransactionType)
         }
         if (selectedName !== "all") query = query.eq("beneficiary_name", selectedName)
-        if (dateFrom) query = query.gte("created_date", dateFrom)
-        if (dateTo) query = query.lte("created_date", `${dateTo}T23:59:59`)
+        if (dateFrom) query = query.gte("date_of_payment", dateFrom)
+        if (dateTo) query = query.lte("date_of_payment", dateTo)
         if (debouncedAmountFrom) query = query.gte("amount", debouncedAmountFrom)
         if (debouncedAmountTo) query = query.lte("amount", debouncedAmountTo)
 
@@ -1672,11 +1731,20 @@ export default function HistoryPage() {
 
         // Page Header
         doc.setFont("helvetica", "bold")
-        doc.setFontSize(22)
+        doc.setFontSize(18)
         doc.setTextColor(0, 0, 0)
-        doc.text("VOUCHER SUMMARY REPORT", pageWidth / 2, 15, { align: "center" })
+        doc.text("VOUCHER SUMMARY REPORT", pageWidth / 2, 12, { align: "center" })
         doc.setFontSize(10)
         doc.text(`Page ${p + 1} of ${totalPages}`, pageWidth - 20, 10, { align: "right" })
+
+        // Date Range Subtitle
+        const fromDateStr = dateFrom ? formatDate(dateFrom) : "Start"
+        const toDateStr = dateTo ? formatDate(dateTo) : "End"
+        const dateHeaderRange = `From Date: ${fromDateStr}     To Date: ${toDateStr}`
+        
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(10)
+        doc.text(dateHeaderRange, pageWidth / 2, 19, { align: "center" })
 
         const debitSlice = debitData.slice(p * rowsPerPage, (p + 1) * rowsPerPage)
         const creditSlice = creditData.slice(p * rowsPerPage, (p + 1) * rowsPerPage)
@@ -1701,7 +1769,7 @@ export default function HistoryPage() {
         }
 
         autoTable(doc, {
-          startY: 25,
+          startY: 30,
           head: [['S.N.', 'Beneficiary Name (Debit)', 'Company Name', 'Date', 'Amount']],
           body: debitBody,
 
@@ -1728,9 +1796,9 @@ theme: 'grid',
   4: { cellWidth: 26, halign: 'right' }
 },
           didDrawPage: (data) => {
-            doc.setFontSize(12)
+            doc.setFontSize(11)
             doc.setTextColor(59, 130, 246)
-            doc.text("Debit Vouchers", data.settings.margin.left, 23)
+            doc.text("Debit Vouchers", data.settings.margin.left, 28)
           }
         })
 
@@ -1753,7 +1821,7 @@ theme: 'grid',
         }
 
         autoTable(doc, {
-          startY: 25,
+          startY: 30,
           head: [['S.N.', 'Beneficiary Name (Credit)', 'Company Name', 'Date', 'Amount']],
           body: creditBody,
           // margin: { left: pageWidth / 2 + 5, right: 10 },
@@ -1781,9 +1849,9 @@ theme: 'grid',
   4: { cellWidth: 26, halign: 'right' }
 },
           didDrawPage: (data) => {
-            doc.setFontSize(12)
+            doc.setFontSize(11)
             doc.setTextColor(249, 115, 22)
-            doc.text("Credit Vouchers", data.settings.margin.left, 23)
+            doc.text("Credit Vouchers", data.settings.margin.left, 28)
           }
         })
       }
@@ -1812,281 +1880,171 @@ theme: 'grid',
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50">
-      {/* Header - Not sticky anymore as per requirement */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <History className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">History</h1>
-              <p className="text-sm text-gray-600">Logged in as: {username} ({userRole})</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+    <div className="container mx-auto px-4 py-6 space-y-6">
+      {/* Filters Card */}
+      <VoucherFilters
+        recordType={recordType}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedName={selectedName}
+        setSelectedName={setSelectedName}
+        selectedCompany={selectedCompany}
+        setSelectedCompany={setSelectedCompany}
+        selectedProject={selectedProject}
+        setSelectedProject={setSelectedProject}
+        selectedPurpose={selectedPurpose}
+        setSelectedPurpose={setSelectedPurpose}
+        selectedTransactionType={selectedTransactionType}
+        setSelectedTransactionType={setSelectedTransactionType}
+        dateFrom={dateFrom}
+        setDateFrom={setDateFrom}
+        dateTo={dateTo}
+        setDateTo={setDateTo}
+        amountFrom={amountFrom}
+        setAmountFrom={setAmountFrom}
+        amountTo={amountTo}
+        setAmountTo={setAmountTo}
+        activeFiltersCount={activeFiltersCount}
+        clearAllFilters={clearAllFilters}
+        uniqueNames={uniqueNames}
+        uniqueCompanies={uniqueCompanies}
+        uniqueProjects={uniqueProjects}
+        uniquePurposes={uniquePurposes}
+        uniqueTransactionTypes={uniqueTransactionTypes}
+      />
 
-            <Button
-              onClick={() => router.push("/voucher")}
-              variant="outline"
-              size="sm"
-              className="bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 text-xs sm:text-sm"
-            >
-              <ArrowLeft className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-              Back to Voucher
-            </Button>
-            <Button
-              onClick={() => router.push("/credit")}
-              variant="outline"
-              size="sm"
-              className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs sm:text-sm"
-            >
-              <DollarSign className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-              Add Receipt
-            </Button>
-            <Button
-              onClick={() => router.push("/self-transfer")}
-              variant="outline"
-              size="sm"
-              className="bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100 text-xs sm:text-sm"
-            >
-              <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-              Contra
-            </Button>
-            {userRole.toLowerCase() === "admin" && (
-              <>
-                <Button
-                  onClick={() => router.push("/dashboard")}
-                  variant="outline"
-                  size="sm"
-                  className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 text-xs sm:text-sm"
-                >
-                  <BarChart3 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  Dashboard
-                </Button>
-                <Button
-                  onClick={() => router.push("/master")}
-                  variant="outline"
-                  size="sm"
-                  className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm"
-                >
-                  <Database className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  Master
-                </Button>
-                <Button
-                  onClick={() => router.push("/users")}
-                  variant="outline"
-                  size="sm"
-                  className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs sm:text-sm"
-                >
-                  <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  Users
-                </Button>
-              </>
+      {/* Top Tabs & Actions Toolbar */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+        {/* Left: Tab selectors */}
+        <div className="flex flex-wrap bg-slate-100/80 p-1 rounded-xl gap-1 w-full xl:w-auto">
+          <button
+            onClick={() => setRecordType("Debit")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 flex-1 sm:flex-initial justify-center ${
+              recordType === "Debit"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+            }`}
+          >
+            <ArrowUpRight className="h-4 w-4 text-red-500" />
+            <span>Payment Vouchers</span>
+          </button>
+          <button
+            onClick={() => setRecordType("Credit")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 flex-1 sm:flex-initial justify-center ${
+              recordType === "Credit"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+            }`}
+          >
+            <ArrowDownLeft className="h-4 w-4 text-emerald-500" />
+            <span>Receipt Vouchers</span>
+          </button>
+          <button
+            onClick={() => setRecordType("Transfer")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 flex-1 sm:flex-initial justify-center ${
+              recordType === "Transfer"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+            }`}
+          >
+            <RefreshCw className="h-4 w-4 text-blue-500" />
+            <span>Contra</span>
+          </button>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
+          <Button
+            onClick={generateSummaryPDF}
+            variant="outline"
+            size="sm"
+            className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 h-10 px-4 rounded-xl font-bold flex items-center gap-2 transition-all duration-200"
+          >
+            <FileText className="h-4 w-4" />
+            <span>PDF Download</span>
+          </Button>
+          <Button
+            onClick={handleExportToExcel}
+            disabled={isExporting}
+            size="sm"
+            className="
+              relative overflow-hidden
+              bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600
+              hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700
+              text-white font-bold
+              border border-emerald-400/30
+              shadow-sm hover:shadow-md
+              transition-all duration-200
+              rounded-xl px-4 h-10
+              text-sm
+              flex items-center gap-2
+            "
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-4 w-4" />
             )}
-            {isRefetching && (
-              <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Refreshing...
-              </div>
-            )}
-            <Badge variant="secondary" className="bg-green-100 text-green-800 px-2 sm:px-3 py-1 text-xs">
-              {totalCount} Total Vouchers
-            </Badge>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 text-xs">
-              Total Amount: ₹{serverTotalAmount.toLocaleString("en-IN")}
-            </Badge>
-          </div>
+            <span>{isExporting ? "Exporting..." : "Export Excel"}</span>
+          </Button>
         </div>
       </div>
 
-      <div className="mx-auto px-4 sm:px-4 py-8 space-y-4">
-        <div className="bg-slate-100/80 py-4 -mx-4 px-4 rounded-b-xl border-b shadow-sm">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1 w-full">
-              <VoucherFilters
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                selectedName={selectedName}
-                setSelectedName={setSelectedName}
-                selectedCompany={selectedCompany}
-                setSelectedCompany={setSelectedCompany}
-                selectedProject={selectedProject}
-                setSelectedProject={setSelectedProject}
-                selectedPurpose={selectedPurpose}
-                setSelectedPurpose={setSelectedPurpose}
-                selectedTransactionType={selectedTransactionType}
-                setSelectedTransactionType={setSelectedTransactionType}
-                dateFrom={dateFrom}
-                setDateFrom={setDateFrom}
-                dateTo={dateTo}
-                setDateTo={setDateTo}
-                amountFrom={amountFrom}
-                setAmountFrom={setAmountFrom}
-                amountTo={amountTo}
-                setAmountTo={setAmountTo}
-                activeFiltersCount={activeFiltersCount}
-                clearAllFilters={clearAllFilters}
-                uniqueNames={uniqueNames}
-                uniqueCompanies={uniqueCompanies}
-                uniqueProjects={uniqueProjects}
-                uniquePurposes={uniquePurposes}
-                uniqueTransactionTypes={uniqueTransactionTypes}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-between bg-white p-3 rounded-lg border shadow-sm">
-          <div className="text-sm text-gray-500">
-            Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{" "}
-            <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of{" "}
-            <span className="font-medium">{totalCount}</span> results
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1 || loading}
-            >
-              Previous
-            </Button>
-            <div className="flex items-center px-2 text-sm font-medium">
-              Page {currentPage} of {Math.ceil(totalCount / pageSize) || 1}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={currentPage >= Math.ceil(totalCount / pageSize) || loading}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-
-        {/* Vouchers Table */}
-        {filteredVouchers.length === 0 ? (
-          <Card className="text-center p-6 sm:p-12">
-            <CardContent>
-              <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
-                {vouchers.length === 0 ? "No Vouchers Found" : "No Matching Vouchers"}
-              </h3>
-              <p className="text-sm sm:text-base text-gray-500 mb-4">
-                {vouchers.length === 0
-                  ? "No payment vouchers found in the History database."
-                  : "Try adjusting your search criteria or filters."}
-              </p>
-              {vouchers.length === 0 ? (
-                <Button
-                  onClick={() => router.push("/voucher")}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm"
-                >
-                  Create First Voucher
-                </Button>
-              ) : (
-                <Button
-                  onClick={clearAllFilters}
-                  variant="outline"
-                  className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-sm"
-                >
-                  Clear All Filters
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="shadow-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 sm:p-6 sticky top-0 z-40">
-              <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4">
-                <div className="flex items-center">
-                  <FileText className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  <CardTitle className="text-sm sm:text-base font-semibold">
-                    Payment Vouchers ({filteredVouchers.length})
-                  </CardTitle>
-                  {activeFiltersCount > 0 && (
-                    <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-800 text-xs">
-                      Filtered
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                  <Button
-                    onClick={clearAllFilters}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50 text-xs sm:text-sm font-semibold"
-                  >
-                    <X className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
-                    Clear Filters
-                  </Button>
-                  <div className="w-full md:w-48">
-                    <Select value={recordType} onValueChange={(v: any) => setRecordType(v)}>
-                      <SelectTrigger className="w-full bg-white border border-blue-200 text-black">
-                        <SelectValue placeholder="Record Type" className="text-black" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="Debit">Payment Vouchers</SelectItem>
-                        <SelectItem value="Credit">Receipt      Vouchers </SelectItem>
-                        <SelectItem value="Transfer">Contra</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={generateSummaryPDF}
-                      variant="outline"
-                      size="sm"
-                      className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 h-9"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      PDF Download
-                    </Button>
-                    <Button
-                      onClick={handleExportToExcel}
-                      disabled={isExporting}
-                      size="sm"
-                      className="
-                        relative overflow-hidden
-                        bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600
-                        hover:from-emerald-600 hover:via-green-600 hover:to-emerald-700
-                        text-white font-semibold
-                        border border-emerald-400/30
-                        shadow-lg shadow-emerald-500/20
-                        hover:shadow-emerald-500/40
-                        transition-all duration-300 ease-in-out
-                        hover:scale-105 active:scale-95
-                        rounded-xl px-4 h-10
-                        text-sm
-                        flex items-center gap-2
-                      "
-                    >
-                      <span className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-                      {isExporting ? (
-                        <Loader2 className="h-4 w-4 animate-spin relative z-10" />
-                      ) : (
-                        <FileSpreadsheet className="h-4 w-4 relative z-10" />
-                      )}
-                      <span className="relative z-10">
-                        {isExporting ? "Exporting..." : "Export Excel"}
-                      </span>
-                    </Button>
-                  </div>
-                </div>
+      {/* Vouchers Table */}
+      {filteredVouchers.length === 0 ? (
+        <Card className="text-center p-6 sm:p-12 border border-slate-100 rounded-2xl shadow-sm">
+          <CardContent>
+            <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-lg sm:text-xl font-bold text-slate-700 mb-2">
+              {vouchers.length === 0 ? "No Vouchers Found" : "No Matching Vouchers"}
+            </h3>
+            <p className="text-sm sm:text-base text-slate-500 mb-6">
+              {vouchers.length === 0
+                ? "No payment vouchers found in the History database."
+                : "Try adjusting your search criteria or filters."}
+            </p>
+            {vouchers.length === 0 ? (
+              <Button
+                onClick={() => router.push("/voucher")}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 py-2.5 shadow-sm text-sm"
+              >
+                Create First Voucher
+              </Button>
+            ) : (
+              <Button
+                onClick={clearAllFilters}
+                variant="outline"
+                className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100/60 font-bold rounded-xl px-5 py-2.5 text-sm"
+              >
+                Clear All Filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="shadow-md border border-slate-100 rounded-2xl overflow-hidden">
+          {/* <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100/50 py-4 px-5 sm:px-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4.5 w-4.5 text-blue-600" />
+                <CardTitle className="text-sm sm:text-base font-bold text-slate-800">
+                  {recordType === "Debit"
+                    ? "Payment Vouchers"
+                    : recordType === "Credit"
+                    ? "Receipt Vouchers"
+                    : "Contra Vouchers"}{" "}
+                  <span className="text-xs text-slate-500 font-normal ml-1">
+                    ({filteredVouchers.length} records)
+                  </span>
+                </CardTitle>
               </div>
-            </CardHeader>
+            </div>
+          </CardHeader> */}
 
-
-            <CardContent className="p-0">
+          <CardContent className="p-0">
               {/* Mobile Card View for small screens with scrollable frame */}
               <div className="block sm:hidden">
-                <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                <div className="h-[500px] max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   <div className="space-y-3 p-3">
                     {filteredVouchers.map((voucher, index) => (
                       <Card key={voucher.id} className="p-4 shadow-sm border hover:bg-gray-50 transition-colors">
@@ -2165,11 +2123,11 @@ theme: 'grid',
               </div>
 
               {/* Desktop Table View for larger screens with scrollable frame */}
-              <div className="hidden sm:block">
-                <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-gray-50 z-10">
+              <div className="hidden sm:block w-full">
+                <div className="overflow-x-auto w-full border rounded-lg">
+                  <div className="h-[500px] max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    <table className="w-full caption-bottom text-sm border-collapse relative">
+                      <TableHeader className="sticky top-0 bg-slate-100 z-10">
                         <TableRow>
                           {recordType === "Debit" ? (
                             <>
@@ -2351,14 +2309,14 @@ theme: 'grid',
                           </TableRow>
                         )}
                       </TableBody>
-                    </Table>
+                    </table>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
-      </div>
+
 
       {/* Edit Modal */}
       <EditVoucherModal

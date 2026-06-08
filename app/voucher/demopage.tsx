@@ -84,21 +84,17 @@ export default function VoucherPage() {
     // Replace the existing fetch functions with these improved versions:
 
     const handleCompanySelection = (value: string) => {
-        // console.log("\n🏢 Company Selection Handler Called")
-        // console.log("Selected company:", value)
-        // console.log("Current bankAccounts state:", bankAccounts)
+      
 
         handleInputChange("companyName", value)
 
         // Add a small delay to ensure state is updated
         setTimeout(() => {
             const filtered = filterBankAccountsByCompany(value, bankAccounts)
-            // console.log("Final filtered accounts:", filtered)
             setFilteredBankAccounts(filtered)
 
             // Reset bank account selection if current selection is not in filtered list
             if (voucherData.bankAcFrom && !filtered.includes(voucherData.bankAcFrom)) {
-                // console.log("Resetting bank account selection")
                 handleInputChange("bankAcFrom", "")
             }
         }, 100)
@@ -107,12 +103,9 @@ export default function VoucherPage() {
 
 
     const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: any[]) => {
-        // console.log("=== FILTERING DEBUG ===")
-        // console.log("Selected Company:", selectedCompany)
-        // console.log("All Bank Accounts:", allBankAccounts)
+        
 
         if (!selectedCompany || !allBankAccounts.length) {
-            // console.log("No company selected or no bank accounts available")
             return allBankAccounts
         }
 
@@ -121,21 +114,16 @@ export default function VoucherPage() {
             const upperWord = word.toUpperCase()
             const isValidKeyword = word.length > 2 &&
                 !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY', '(INDIA)'].includes(upperWord)
-            // console.log(`Word: "${word}" -> Valid: ${isValidKeyword}`)
             return isValidKeyword
         })
 
-        // console.log("Keywords to match:", companyKeywords)
 
-        // Try different matching strategies
         const strategies = [
-            // Strategy 1: All keywords must be present (strict)
             (account: string) => {
                 const upperAccount = account.toUpperCase()
                 const allMatch = companyKeywords.every(keyword =>
                     upperAccount.includes(keyword.toUpperCase())
                 )
-                // console.log(`Strategy 1 - Account: "${account}" -> Match all keywords: ${allMatch}`)
                 return allMatch
             },
 
@@ -146,7 +134,7 @@ export default function VoucherPage() {
                     upperAccount.includes(keyword.toUpperCase())
                 ).length
                 const matches = matchCount >= Math.min(2, companyKeywords.length)
-                // console.log(`Strategy 2 - Account: "${account}" -> Match count: ${matchCount}/${companyKeywords.length} -> Matches: ${matches}`)
+               
                 return matches
             },
 
@@ -156,31 +144,25 @@ export default function VoucherPage() {
                 const anyMatch = companyKeywords.some(keyword =>
                     upperAccount.includes(keyword.toUpperCase())
                 )
-                // console.log(`Strategy 3 - Account: "${account}" -> Any match: ${anyMatch}`)
+               
                 return anyMatch
             }
         ]
 
         // Try strategies in order of preference
         for (let i = 0; i < strategies.length; i++) {
-            // console.log(`\n--- Trying Strategy ${i + 1} ---`)
             const filtered = allBankAccounts.filter(strategies[i])
-            // console.log(`Strategy ${i + 1} results:`, filtered)
 
             if (filtered.length > 0) {
-                // console.log(`✅ Strategy ${i + 1} found ${filtered.length} matches`)
                 return filtered
             }
-            console.log(`❌ Strategy ${i + 1} found no matches`)
         }
 
-        // console.log("⚠️ No strategy found matches, returning all accounts")
         return allBankAccounts
     }
 
     const fetchCompanyNamesFromMaster = async () => {
         try {
-            // console.log("Fetching company names from Supabase...")
             const { data, error } = await supabase.from('master').select('company_name')
             if (error) throw error
             
@@ -195,7 +177,7 @@ export default function VoucherPage() {
 
     const fetchBankAccountsFromMaster = async () => {
         try {
-            // console.log("Fetching bank accounts from Supabase...")
+            
             const { data, error } = await supabase.from('master').select('bank_ac_from')
             if (error) throw error
             
@@ -211,7 +193,7 @@ export default function VoucherPage() {
 
     const fetchTransactionTypesFromMaster = async () => {
         try {
-            // console.log("Fetching transaction types from Supabase...")
+            
             const { data, error } = await supabase.from('master').select('transaction_type')
             if (error) throw error
             
@@ -226,7 +208,7 @@ export default function VoucherPage() {
 
     const fetchProjectsFromMaster = async () => {
         try {
-            // console.log("Fetching projects from Supabase...")
+            
             const { data, error } = await supabase.from('master').select('project')
             if (error) throw error
             
@@ -241,7 +223,6 @@ export default function VoucherPage() {
 
     const fetchPaymentFromCompaniesFromMaster = async () => {
         try {
-            // console.log("Fetching payment from companies from Supabase...")
             const { data, error } = await supabase.from('master').select('payment_from_company')
             if (error) throw error
             
@@ -302,8 +283,6 @@ export default function VoucherPage() {
                     const nextVoucher = await getNextVoucherNumber()
                     setNextVoucherNumber(nextVoucher)
 
-                    // Fetch all dropdown data from master sheet with proper sequencing
-                    // console.log("Starting to fetch all dropdown data...")
 
                     await Promise.all([
                         fetchBankAccountsFromMaster(),
@@ -313,7 +292,6 @@ export default function VoucherPage() {
                         fetchProjectsFromMaster(),
                     ])
 
-                    // console.log("All dropdown data fetched successfully")
 
                     const currentDate = new Date().toISOString().split("T")[0]
 
@@ -1079,7 +1057,6 @@ export default function VoucherPage() {
                                             <Select
                                                 value={voucherData.bankAcFrom}
                                                 onValueChange={(value) => {
-                                                    // console.log("Bank account selected:", value)
                                                     handleInputChange("bankAcFrom", value)
                                                 }}
                                             >

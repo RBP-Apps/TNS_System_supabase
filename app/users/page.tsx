@@ -205,53 +205,7 @@ export default function UserRegistration() {
   }, [users, searchTerm, filterRole])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="flex items-center space-x-3">
-              <div className="bg-purple-600 p-2 rounded-lg">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">User Management</h1>
-                <p className="text-sm text-gray-600">
-                  Welcome, {currentUsername} ({currentUserRole})
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button
-                onClick={() => router.push("/dashboard")}
-                variant="outline"
-                className="bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
-              <Button
-                onClick={() => router.push("/master")}
-                variant="outline"
-                className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
-              >
-                <Database className="mr-2 h-4 w-4" />
-                Master
-              </Button>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto p-4 md:p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
         {/* STATS & ADD BUTTON SECTION */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full sm:w-auto flex-1">
@@ -578,6 +532,6 @@ export default function UserRegistration() {
           </div>
         )}
       </div>
-    </div>
+
   )
 }

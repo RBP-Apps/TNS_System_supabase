@@ -156,45 +156,49 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
               </div>
 
               {/* Project Dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
-                <Select
-                  value={editVoucher.project}
-                  onValueChange={(value) => setEditVoucher((prev) => (prev ? { ...prev, project: value } : null))}
-                  disabled={loadingMasterData}
-                >
-                  <SelectTrigger className="w-full border border-gray-300 rounded-lg px-3 py-2 h-auto">
-                    <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Project"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {masterData.projects.map((proj) => (
-                      <SelectItem key={proj} value={proj}>
-                        {proj}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {editVoucher.recordType !== "Transfer" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                  <Select
+                    value={editVoucher.project}
+                    onValueChange={(value) => setEditVoucher((prev) => (prev ? { ...prev, project: value } : null))}
+                    disabled={loadingMasterData}
+                  >
+                    <SelectTrigger className="w-full border border-gray-300 rounded-lg px-3 py-2 h-auto">
+                      <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Project"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {masterData.projects.map((proj) => (
+                        <SelectItem key={proj} value={proj}>
+                          {proj}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Other input fields */}
               {[
-                ["Beneficiary Name", "beneficiaryName"],
-                ["PO Number", "poNumber"],
-                ["UTR Number", "utrNumber"],
-                ["Beneficiary A/C Name", "beneficiaryAcName"],
-                ["Beneficiary A/C Number", "beneficiaryAcNumber"],
-                ["Beneficiary Bank Name", "beneficiaryBankName"],
-                ["Beneficiary Bank IFSC", "beneficiaryBankIfsc"],
-              ].map(([label, key]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <Input
-                    value={editVoucher[key]}
-                    onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, [key]: e.target.value } : null))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
-                </div>
-              ))}
+                ["Beneficiary Name", "beneficiaryName", editVoucher.recordType !== "Transfer"],
+                ["PO Number", "poNumber", editVoucher.recordType !== "Credit"],
+                ["UTR Number", "utrNumber", editVoucher.recordType !== "Debit"],
+                ["Beneficiary A/C Name", "beneficiaryAcName", editVoucher.recordType !== "Credit"],
+                ["Beneficiary A/C Number", "beneficiaryAcNumber", editVoucher.recordType !== "Credit"],
+                ["Beneficiary Bank Name", "beneficiaryBankName", editVoucher.recordType !== "Credit"],
+                ["Beneficiary Bank IFSC", "beneficiaryBankIfsc", editVoucher.recordType !== "Credit"],
+              ]
+                .filter(([,, show]) => show)
+                .map(([label, key]) => (
+                  <div key={key as string}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{label as string}</label>
+                    <Input
+                      value={editVoucher[key as string] || ""}
+                      onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, [key as string]: e.target.value } : null))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    />
+                  </div>
+                ))}
 
               {/* Transaction Type Dropdown */}
               <div>
@@ -253,20 +257,22 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
-                { label: "Entry Done By", key: "entryDoneBy", isReadOnly: true },
-                { label: "Checked By", key: "checkedBy", isReadOnly: false },
-                { label: "Approved By", key: "approvedBy", isReadOnly: false },
-              ].map(({ label, key, isReadOnly }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <Input
-                    value={editVoucher[key]}
-                    onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, [key]: e.target.value } : null))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    readOnly={isReadOnly}
-                  />
-                </div>
-              ))}
+                { label: "Entry Done By", key: "entryDoneBy", isReadOnly: true, show: true },
+                { label: "Checked By", key: "checkedBy", isReadOnly: false, show: editVoucher.recordType !== "Transfer" },
+                { label: "Approved By", key: "approvedBy", isReadOnly: false, show: editVoucher.recordType !== "Credit" },
+              ]
+                .filter((s) => s.show)
+                .map(({ label, key, isReadOnly }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                    <Input
+                      value={editVoucher[key] || ""}
+                      onChange={(e) => setEditVoucher((prev) => (prev ? { ...prev, [key]: e.target.value } : null))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                ))}
             </div>
 
             <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 mt-4">

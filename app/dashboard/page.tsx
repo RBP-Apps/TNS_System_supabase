@@ -76,7 +76,6 @@ export default function DashboardPage() {
   const fetchVouchersFromSupabase = async () => {
     try {
       setLoading(true)
-      // console.log('=== FETCHING DASHBOARD DATA FROM SUPABASE ===')
 
       const { data, error } = await supabase
         .from('History')
@@ -88,7 +87,6 @@ export default function DashboardPage() {
       }
 
       if (data && data.length > 0) {
-        // console.log('Successfully received data from History table')
         const mappedVouchers = data
           .map((row: any, index: number) => {
             if (!row.voucher_no) return null
@@ -122,7 +120,6 @@ export default function DashboardPage() {
           .filter((voucher): voucher is VoucherData => Boolean(voucher))
 
         setVouchers(mappedVouchers)
-        // console.log(`✅ Successfully loaded ${mappedVouchers.length} vouchers from Supabase!`)
       } else {
         console.warn('No vouchers found in History table')
         setVouchers([])
@@ -240,341 +237,262 @@ export default function DashboardPage() {
   const recentVouchers = getRecentVouchers()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 p-1.5 sm:p-2 rounded-lg">
-                <Building2 className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-              </div>
+    <div className="container mx-auto space-y-4 sm:space-y-8">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-800">Admin Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-600">Welcome, {username}</p>
+                <p className="text-blue-100 text-xs sm:text-sm font-medium">Total Vouchers</p>
+                <p className="text-lg sm:text-3xl font-bold">{vouchers.length}</p>
+              </div>
+              <FileText className="h-4 w-4 sm:h-8 sm:w-8 text-blue-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-xs sm:text-sm font-medium">Total Amount</p>
+                <p className="text-sm sm:text-3xl font-bold">₹{getTotalAmount().toLocaleString("en-IN")}</p>
+              </div>
+              <DollarSign className="h-4 w-4 sm:h-8 sm:w-8 text-green-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-xs sm:text-sm font-medium">Active Projects</p>
+                <p className="text-lg sm:text-3xl font-bold">{projectWiseData.length}</p>
+              </div>
+              <Briefcase className="h-4 w-4 sm:h-8 sm:w-8 text-purple-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-xs sm:text-sm font-medium">Avg Amount</p>
+                <p className="text-sm sm:text-3xl font-bold">
+                  ₹
+                  {vouchers.length > 0 ? Math.round(getTotalAmount() / vouchers.length).toLocaleString("en-IN") : "0"}
+                </p>
+              </div>
+              <TrendingUp className="h-4 w-4 sm:h-8 sm:w-8 text-orange-200" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Company Wise Analysis & Project Wise Analysis with Scrollable Frames */}
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
+        <Card className="shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <CardTitle className="flex items-center text-sm sm:text-base">
+              <Building2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+              Company Wise Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                {companyWiseData.map((company, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="min-w-0 flex-1 mr-3">
+                      <p className="font-semibold text-gray-800 text-sm sm:text-base truncate">{company.name}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{company.count} vouchers</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-green-600 text-sm sm:text-base">₹{company.amount.toLocaleString("en-IN")}</p>
+                      <p className="text-xs text-gray-500">{((company.amount / getTotalAmount()) * 100).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                ))}
+                {companyWiseData.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No company data available</p>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
-              <Button
-                onClick={() => router.push("/voucher")}
-                variant="outline"
-                size="sm"
-                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                Payment Voucher
-              </Button>
-              <Button
-                onClick={() => router.push("/credit")}
-                variant="outline"
-                size="sm"
-                className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <DollarSign className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                Add Receipt
-              </Button>
-              <Button
-                onClick={() => router.push("/history")}
-                variant="outline"
-                size="sm"
-                className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <History className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                History
-              </Button>
-              {userRole.toLowerCase() === "admin" && (
-                <>
-                  <Button
-                    onClick={() => router.push("/master")}
-                    variant="outline"
-                    size="sm"
-                    className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs sm:text-sm flex-1 sm:flex-none"
-                  >
-                    <Database className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Master
-                  </Button>
-                  <Button
-                    onClick={() => router.push("/users")}
-                    variant="outline"
-                    size="sm"
-                    className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 text-xs sm:text-sm flex-1 sm:flex-none"
-                  >
-                    <Users className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Users
-                  </Button>
-                </>
-              )}
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <LogOut className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                Logout
-              </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+            <CardTitle className="flex items-center text-sm sm:text-base">
+              <Target className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+              Project Wise Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                {projectWiseData.map((project, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="min-w-0 flex-1 mr-3">
+                      <p className="font-semibold text-gray-800 text-sm sm:text-base truncate">{project.name}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{project.count} vouchers</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-green-600 text-sm sm:text-base">₹{project.amount.toLocaleString("en-IN")}</p>
+                      <p className="text-xs text-gray-500">{((project.amount / getTotalAmount()) * 100).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                ))}
+                {projectWiseData.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No project data available</p>
+                  </div>
+                )}
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monthly Trends */}
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+          <CardTitle className="flex items-center text-sm sm:text-base">
+            <BarChart3 className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            Monthly Trends
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {monthlyData.slice(-6).map((month, index) => (
+              <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      {new Date(month.month + "-01").toLocaleDateString("en-IN", {
+                        year: "numeric",
+                        month: "long",
+                      })}
+                    </p>
+                    <p className="text-sm sm:text-lg font-bold text-gray-800">{month.count} vouchers</p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="text-sm sm:text-lg font-bold text-green-600">₹{month.amount.toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <CardContent className="p-3 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Total Vouchers</p>
-                  <p className="text-lg sm:text-3xl font-bold">{vouchers.length}</p>
-                </div>
-                <FileText className="h-4 w-4 sm:h-8 sm:w-8 text-blue-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-            <CardContent className="p-3 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-xs sm:text-sm font-medium">Total Amount</p>
-                  <p className="text-sm sm:text-3xl font-bold">₹{getTotalAmount().toLocaleString("en-IN")}</p>
-                </div>
-                <DollarSign className="h-4 w-4 sm:h-8 sm:w-8 text-green-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-            <CardContent className="p-3 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-xs sm:text-sm font-medium">Active Projects</p>
-                  <p className="text-lg sm:text-3xl font-bold">{projectWiseData.length}</p>
-                </div>
-                <Briefcase className="h-4 w-4 sm:h-8 sm:w-8 text-purple-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-            <CardContent className="p-3 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-xs sm:text-sm font-medium">Avg Amount</p>
-                  <p className="text-sm sm:text-3xl font-bold">
-                    ₹
-                    {vouchers.length > 0 ? Math.round(getTotalAmount() / vouchers.length).toLocaleString("en-IN") : "0"}
-                  </p>
-                </div>
-                <TrendingUp className="h-4 w-4 sm:h-8 sm:w-8 text-orange-200" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Company Wise Analysis & Project Wise Analysis with Scrollable Frames */}
-        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <Building2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Company Wise Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                  {companyWiseData.map((company, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="min-w-0 flex-1 mr-3">
-                        <p className="font-semibold text-gray-800 text-sm sm:text-base truncate">{company.name}</p>
-                        <p className="text-xs sm:text-sm text-gray-600">{company.count} vouchers</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-green-600 text-sm sm:text-base">₹{company.amount.toLocaleString("en-IN")}</p>
-                        <p className="text-xs text-gray-500">{((company.amount / getTotalAmount()) * 100).toFixed(1)}%</p>
-                      </div>
-                    </div>
-                  ))}
-                  {companyWiseData.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No company data available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <Target className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Project Wise Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                  {projectWiseData.map((project, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="min-w-0 flex-1 mr-3">
-                        <p className="font-semibold text-gray-800 text-sm sm:text-base truncate">{project.name}</p>
-                        <p className="text-xs sm:text-sm text-gray-600">{project.count} vouchers</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-green-600 text-sm sm:text-base">₹{project.amount.toLocaleString("en-IN")}</p>
-                        <p className="text-xs text-gray-500">{((project.amount / getTotalAmount()) * 100).toFixed(1)}%</p>
-                      </div>
-                    </div>
-                  ))}
-                  {projectWiseData.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No project data available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Monthly Trends */}
+      {/* Purpose Wise & Recent Vouchers with Scrollable Frames */}
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+          <CardHeader className="bg-gradient-to-r from-orange-600 to-red-600 text-white">
             <CardTitle className="flex items-center text-sm sm:text-base">
-              <BarChart3 className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-              Monthly Trends
+              <PieChart className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+              Purpose Wise Breakdown
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {monthlyData.slice(-6).map((month, index) => (
-                <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div className="flex-1">
-                      <p className="text-xs sm:text-sm text-gray-600">
-                        {new Date(month.month + "-01").toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "long",
-                        })}
+          <CardContent className="p-0">
+            <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                {purposeWiseData.map((purpose, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="min-w-0 flex-1 mr-3">
+                      <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{purpose.purpose}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{purpose.count} vouchers</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-green-600 text-sm sm:text-base">₹{purpose.amount.toLocaleString("en-IN")}</p>
+                      <Badge variant="secondary" className="text-xs mt-1">
+                        {((purpose.amount / getTotalAmount()) * 100).toFixed(1)}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {purposeWiseData.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No purpose data available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white">
+            <CardTitle className="flex items-center text-sm sm:text-base">
+              <Activity className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+              Recent Vouchers
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+                {recentVouchers.map((voucher, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="min-w-0 flex-1 mr-3">
+                      <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{voucher.voucherNo}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">{voucher.beneficiaryName}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(voucher.timestamp).toLocaleDateString("en-IN")}
                       </p>
-                      <p className="text-sm sm:text-lg font-bold text-gray-800">{month.count} vouchers</p>
                     </div>
-                    <div className="text-left sm:text-right">
-                      <p className="text-sm sm:text-lg font-bold text-green-600">₹{month.amount.toLocaleString("en-IN")}</p>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-bold text-green-600 text-sm sm:text-base">
+                        ₹{Number.parseFloat(voucher.amount).toLocaleString("en-IN")}
+                      </p>
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {voucher.transactionType}
+                      </Badge>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Purpose Wise & Recent Vouchers with Scrollable Frames */}
-        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-orange-600 to-red-600 text-white">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <PieChart className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Purpose Wise Breakdown
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                  {purposeWiseData.map((purpose, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="min-w-0 flex-1 mr-3">
-                        <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{purpose.purpose}</p>
-                        <p className="text-xs sm:text-sm text-gray-600">{purpose.count} vouchers</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-green-600 text-sm sm:text-base">₹{purpose.amount.toLocaleString("en-IN")}</p>
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {((purpose.amount / getTotalAmount()) * 100).toFixed(1)}%
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                  {purposeWiseData.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <PieChart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No purpose data available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <Activity className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Recent Vouchers
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-80 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                  {recentVouchers.map((voucher, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="min-w-0 flex-1 mr-3">
-                        <p className="font-medium text-gray-800 text-sm sm:text-base truncate">{voucher.voucherNo}</p>
-                        <p className="text-xs sm:text-sm text-gray-600 truncate">{voucher.beneficiaryName}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(voucher.timestamp).toLocaleDateString("en-IN")}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-green-600 text-sm sm:text-base">
-                          ₹{Number.parseFloat(voucher.amount).toLocaleString("en-IN")}
-                        </p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {voucher.transactionType}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                  {recentVouchers.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No recent vouchers available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Date Wise Analysis */}
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-            <CardTitle className="flex items-center text-sm sm:text-base">
-              <Calendar className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-              Date Wise Analysis (Last 10 Days)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-              {dateWiseData.slice(-10).map((day, index) => (
-                <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border">
-                  <div className="text-center">
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">{day.date}</p>
-                    <p className="text-sm sm:text-lg font-bold text-gray-800">{day.count}</p>
-                    <p className="text-xs sm:text-sm font-semibold text-green-600">₹{day.amount.toLocaleString("en-IN")}</p>
+                ))}
+                {recentVouchers.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No recent vouchers available</p>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Date Wise Analysis */}
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+          <CardTitle className="flex items-center text-sm sm:text-base">
+            <Calendar className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            Date Wise Analysis (Last 10 Days)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 sm:p-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            {dateWiseData.slice(-10).map((day, index) => (
+              <div key={index} className="p-3 sm:p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border">
+                <div className="text-center">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">{day.date}</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-800">{day.count}</p>
+                  <p className="text-xs sm:text-sm font-semibold text-green-600">₹{day.amount.toLocaleString("en-IN")}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

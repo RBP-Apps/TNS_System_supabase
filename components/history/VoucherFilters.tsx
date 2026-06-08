@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandInput as CommandSearchInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
@@ -22,6 +20,7 @@ import {
 } from "@/components/ui/popover"
 
 interface VoucherFiltersProps {
+  recordType: string
   searchTerm: string
   setSearchTerm: (v: string) => void
   selectedName: string
@@ -75,18 +74,18 @@ const SearchableSelect = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-9 sm:h-10 text-xs sm:text-sm font-normal bg-white"
+          className="w-full justify-between h-10 text-xs sm:text-sm font-normal bg-white rounded-xl border-slate-200 hover:bg-slate-50 transition-colors"
         >
           <span className="truncate">
             {value === "all" ? allLabel : value}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-slate-400" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
-          <CommandList>
+        <Command className="rounded-xl border border-slate-100">
+          <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} className="h-10 text-sm" />
+          <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               <CommandItem
@@ -95,10 +94,11 @@ const SearchableSelect = ({
                   onValueChange("all")
                   setOpen(false)
                 }}
+                className="text-xs sm:text-sm py-2 cursor-pointer"
               >
                 <Check
                   className={cn(
-                    "mr-2 h-4 w-4",
+                    "mr-2 h-4 w-4 text-blue-600",
                     value === "all" ? "opacity-100" : "opacity-0"
                   )}
                 />
@@ -112,10 +112,11 @@ const SearchableSelect = ({
                     onValueChange(option)
                     setOpen(false)
                   }}
+                  className="text-xs sm:text-sm py-2 cursor-pointer"
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 text-blue-600",
                       value === option ? "opacity-100" : "opacity-0"
                     )}
                   />
@@ -131,6 +132,7 @@ const SearchableSelect = ({
 }
 
 const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
+  recordType,
   searchTerm,
   setSearchTerm,
   selectedName,
@@ -160,14 +162,14 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
   uniqueTransactionTypes,
 }) => {
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="bg-gradient-to-r from-gray-600 to-gray-700 text-white">
-        <CardTitle className="flex items-center justify-between text-sm sm:text-base">
-          <div className="flex items-center">
-            <Filter className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-            Search & Filters
+    <Card className="shadow-md border border-slate-100 rounded-2xl overflow-hidden">
+      <CardHeader className="bg-blue-50/40 border-b border-blue-100/50  ">
+        <CardTitle className="flex items-center justify-between text-sm sm:text-base font-bold text-slate-800">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4.5 w-4.5 text-blue-600" />
+            <span>Search & Filters</span>
             {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-800 text-xs">
+              <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-800 border-none font-semibold text-xs rounded-full px-2.5 py-0.5">
                 {activeFiltersCount} active
               </Badge>
             )}
@@ -175,30 +177,37 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
           {activeFiltersCount > 0 && (
             <Button
               onClick={clearAllFilters}
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="bg-red-500 hover:bg-red-600 text-white border border-red-400 hover:border-red-500 shadow-md hover:shadow-lg transition-all duration-200 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold"
+              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 hover:border-red-300 font-bold text-xs rounded-xl px-3 h-8.5 transition-all duration-200 flex items-center gap-1"
             >
-              <X className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
-              Clear All
+              <X className="h-3.5 w-3.5" />
+              Clear Filters
             </Button>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 sm:p-6 space-y-3 sm:space-y-4">
-        {/* Search Bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="relative w-full sm:w-[70%]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4" />
-            <Input
-              placeholder="Search by voucher number, beneficiary name, project, purpose, or company..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 sm:pl-10 h-10 sm:h-11 border-2 border-gray-200 focus:border-blue-500 text-sm"
-            />
+      <CardContent className="p-5 sm:p-6 space-y-5 bg-white">
+        {/* Systematic Grid for all filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          
+          {/* Keyword Search */}
+          <div className="sm:col-span-2 space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Keyword Search</label>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <Input
+                placeholder="Search by voucher no, beneficiary, project, purpose, company..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 h-10 border-slate-200 focus:border-blue-500 text-sm rounded-xl transition-all duration-150"
+              />
+            </div>
           </div>
 
-          <div className="w-full sm:w-[25%]">
+          {/* Beneficiary Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Beneficiary Name</label>
             <SearchableSelect
               value={selectedName}
               onValueChange={setSelectedName}
@@ -207,12 +216,10 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
               allLabel="All Names"
             />
           </div>
-        </div>
 
-        {/* Filter Row 1 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Company</label>
+          {/* Company Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Company</label>
             <SearchableSelect
               value={selectedCompany}
               onValueChange={setSelectedCompany}
@@ -221,126 +228,140 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
               allLabel="All Companies"
             />
           </div>
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Project</label>
-            <SearchableSelect
-              value={selectedProject}
-              onValueChange={setSelectedProject}
-              options={uniqueProjects}
-              placeholder="Projects"
-              allLabel="All Projects"
-            />
-          </div>
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Purpose</label>
-            <SearchableSelect
-              value={selectedPurpose}
-              onValueChange={setSelectedPurpose}
-              options={uniquePurposes}
-              placeholder="Purposes"
-              allLabel="All Purposes"
-            />
-          </div>
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Transaction Type</label>
-            <SearchableSelect
-              value={selectedTransactionType}
-              onValueChange={setSelectedTransactionType}
-              options={uniqueTransactionTypes}
-              placeholder="Types"
-              allLabel="All Types"
-            />
-          </div>
-        </div>
 
-        {/* Filter Row 2 - Date and Amount Range */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Date From</label>
+          {/* Project Dropdown (only show if Debit) */}
+          {recordType === "Debit" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Project</label>
+              <SearchableSelect
+                value={selectedProject}
+                onValueChange={setSelectedProject}
+                options={uniqueProjects}
+                placeholder="Projects"
+                allLabel="All Projects"
+              />
+            </div>
+          )}
+
+          {/* Purpose Dropdown (only show if Debit) */}
+          {recordType === "Debit" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Purpose</label>
+              <SearchableSelect
+                value={selectedPurpose}
+                onValueChange={setSelectedPurpose}
+                options={uniquePurposes}
+                placeholder="Purposes"
+                allLabel="All Purposes"
+              />
+            </div>
+          )}
+
+          {/* Transaction Type Dropdown (only show if Debit) */}
+          {recordType === "Debit" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Transaction Type</label>
+              <SearchableSelect
+                value={selectedTransactionType}
+                onValueChange={setSelectedTransactionType}
+                options={uniqueTransactionTypes}
+                placeholder="Types"
+                allLabel="All Types"
+              />
+            </div>
+          )}
+
+          {/* Date From */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Date From</label>
             <Input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-9 sm:h-10 text-xs sm:text-sm"
+              className="h-10 border-slate-200 focus:border-blue-500 text-sm rounded-xl cursor-pointer"
             />
           </div>
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Date To</label>
+
+          {/* Date To */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Date To</label>
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-9 sm:h-10 text-xs sm:text-sm"
+              className="h-10 border-slate-200 focus:border-blue-500 text-sm rounded-xl cursor-pointer"
             />
           </div>
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Amount From (₹)</label>
+
+          {/* Amount From */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Min Amount (₹)</label>
             <Input
               type="number"
               placeholder="Min amount"
               value={amountFrom}
               onChange={(e) => setAmountFrom(e.target.value)}
-              className="h-9 sm:h-10 text-xs sm:text-sm"
+              className="h-10 border-slate-200 focus:border-blue-500 text-sm rounded-xl"
             />
           </div>
-          <div>
-            <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 block">Amount To (₹)</label>
+
+          {/* Amount To */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Max Amount (₹)</label>
             <Input
               type="number"
               placeholder="Max amount"
               value={amountTo}
               onChange={(e) => setAmountTo(e.target.value)}
-              className="h-9 sm:h-10 text-xs sm:text-sm"
+              className="h-10 border-slate-200 focus:border-blue-500 text-sm rounded-xl"
             />
           </div>
         </div>
 
-        {/* Date Shortcut Row */}
-        <div className="pt-2 border-t border-gray-100">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <label className="text-xs sm:text-sm font-medium text-gray-700">Date Shortcuts:</label>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const today = new Date().toISOString().split("T")[0]
-                  setDateFrom(today)
-                  setDateTo(today)
-                }}
-                className="text-xs h-8 bg-blue-50 border-blue-100 hover:bg-blue-100 text-blue-700"
-              >
-                Today
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const now = new Date()
-                  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
-                  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]
-                  setDateFrom(firstDay)
-                  setDateTo(lastDay)
-                }}
-                className="text-xs h-8 bg-green-50 border-green-100 hover:bg-green-100 text-green-700"
-              >
-                Monthly
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const now = new Date()
-                  const firstDay = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
-                  const lastDay = new Date(now.getFullYear(), 11, 31).toISOString().split("T")[0]
-                  setDateFrom(firstDay)
-                  setDateTo(lastDay)
-                }}
-                className="text-xs h-8 bg-purple-50 border-purple-100 hover:bg-purple-100 text-purple-700"
-              >
-                Yearly
-              </Button>
-            </div>
+        {/* Date Shortcuts Row */}
+        <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date Shortcuts:</span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const today = new Date().toISOString().split("T")[0]
+                setDateFrom(today)
+                setDateTo(today)
+              }}
+              className="text-xs h-8 px-3 rounded-lg bg-blue-50/60 border-blue-100 hover:bg-blue-100/60 text-blue-600 font-semibold"
+            >
+              Today
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const now = new Date()
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]
+                setDateFrom(firstDay)
+                setDateTo(lastDay)
+              }}
+              className="text-xs h-8 px-3 rounded-lg bg-emerald-50/60 border-emerald-100 hover:bg-emerald-100/60 text-emerald-600 font-semibold"
+            >
+              Monthly
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const now = new Date()
+                const firstDay = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
+                const lastDay = new Date(now.getFullYear(), 11, 31).toISOString().split("T")[0]
+                setDateFrom(firstDay)
+                setDateTo(lastDay)
+              }}
+              className="text-xs h-8 px-3 rounded-lg bg-purple-50/60 border-purple-100 hover:bg-purple-100/60 text-purple-600 font-semibold"
+            >
+              Yearly
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -348,4 +369,5 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
   )
 })
 
+VoucherFilters.displayName = "VoucherFilters"
 export default VoucherFilters

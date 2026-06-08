@@ -113,7 +113,7 @@ export default function SelfTransferPage() {
   const [userRole, setUserRole] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true)
-  
+
   const [companyNames, setCompanyNames] = useState<string[]>([])
   const [bankAccounts, setBankAccounts] = useState<string[]>([])
   const [transactionTypes, setTransactionTypes] = useState<string[]>([])
@@ -202,7 +202,7 @@ export default function SelfTransferPage() {
       .from('History')
       .select('beneficiary_name, company_name, bank_ac_from, transaction_type, beneficiary_ac_name, beneficiary_ac_number, beneficiary_bank_name, beneficiary_bank_ifsc')
       .order('created_date', { ascending: false })
-    
+
     if (!error && data) {
       const unique = new Map()
       data.forEach(item => {
@@ -227,7 +227,7 @@ export default function SelfTransferPage() {
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: string[]) => {
     if (!selectedCompany || !allBankAccounts.length) return allBankAccounts
-    
+
     const keywords = selectedCompany.split(' ').filter(word => {
       const upperWord = word.toUpperCase()
       return word.length > 2 && !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY'].includes(upperWord)
@@ -459,260 +459,183 @@ export default function SelfTransferPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-teal-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="bg-teal-600 p-2 rounded-lg">
-              <RefreshCw className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">Contra Voucher</h1>
-              <p className="text-sm text-gray-600">Logged in as: {username}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => router.push("/voucher")} variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
-               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Voucher
-            </Button>
-            <Button onClick={() => router.push("/history")} variant="outline" className="bg-green-50 border-green-200 text-green-700">
-              <History className="mr-2 h-4 w-4" /> History
-            </Button>
-            <Button onClick={handleLogout} variant="outline" className="bg-red-50 border-red-200 text-red-700">
-              <LogOut className="mr-2 h-4 w-4" /> Logout
-            </Button>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto px-4 max-w-4xl">
+      <form onSubmit={handleSubmit}>
+        <Card className="shadow-xl border-0 bg-white">
+          <CardHeader className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-t-lg">
+            <CardTitle className="text-center">CONTRA VOUCHER</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="bg-white border-2 border-gray-800 p-4 space-y-6">
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <form onSubmit={handleSubmit}>
-          <Card className="shadow-xl border-0 bg-white">
-            <CardHeader className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-t-lg">
-              <CardTitle className="text-center">CONTRA VOUCHER</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="bg-white border-2 border-gray-800 p-4 space-y-6">
-                
-                {/* Row 1: Beneficiary and PO */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 border-b border-gray-400 pb-4">
-                  <div className="md:col-span-8">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary Name (Payer)</Label>
-                    <SearchableBeneficiarySelect
-                      value={formData.beneficiaryName}
-                      onValueChange={(val) => handleBeneficiarySelection(val)}
-                      options={beneficiaries}
-                      onSelect={handleBeneficiarySelection}
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">PO. NUMBER</Label>
-                    <Input
-                      value={formData.poNumber}
-                      onChange={(e) => handleInputChange("poNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
+           
+
+              {/* Row 2: Company, Bank, Date */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Company Name</Label>
+                  <Select value={formData.companyName} onValueChange={handleCompanySelection}>
+                    <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
+                      <SelectValue placeholder="Select Company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companyNames.map((c, i) => <SelectItem key={i} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                {/* Row 2: Company, Bank, Date */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Company Name</Label>
-                    <Select value={formData.companyName} onValueChange={handleCompanySelection}>
-                      <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
-                        <SelectValue placeholder="Select Company" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companyNames.map((c, i) => <SelectItem key={i} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">BANK AC FROM</Label>
-                    <Select value={formData.bankAcFrom} onValueChange={(v) => handleInputChange("bankAcFrom", v)}>
-                      <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
-                        <SelectValue placeholder="Select Bank" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredBankAccounts.map((a, i) => <SelectItem key={i} value={a}>{a}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Date of Payment</Label>
-                    <Input
-                      type="date"
-                      value={formData.dateOfPayment}
-                      onChange={(e) => handleInputChange("dateOfPayment", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                      required
-                    />
-                  </div>
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">BANK AC FROM</Label>
+                  <Select value={formData.bankAcFrom} onValueChange={(v) => handleInputChange("bankAcFrom", v)}>
+                    <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
+                      <SelectValue placeholder="Select Bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredBankAccounts.map((a, i) => <SelectItem key={i} value={a}>{a}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                {/* Row 4: Purpose, Transaction Type, UTR */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">PURPOSE</Label>
-                    <Input
-                      value={formData.purposeOfPayment}
-                      onChange={(e) => handleInputChange("purposeOfPayment", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                  {/* <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
-                    <Select value={formData.transactionType} onValueChange={(v) => handleInputChange("transactionType", v)}>
-                      <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
-                        <SelectValue placeholder="Select Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {transactionTypes.map((t, i) => <SelectItem key={i} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div> */}
-
-
-                  <div>
-  <Label className="text-xs font-bold text-gray-700 uppercase">
-    TRANSACTION TYPE
-  </Label>
-
-  {/* Fixed Value */}
-  <div className="border-0 border-b border-gray-400 rounded-none px-1 py-2 h-8 text-sm flex items-center text-gray-800 font-medium">
-    Contra
-  </div>
-</div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
-                    <Input
-                      value={formData.utrNumber}
-                      onChange={(e) => handleInputChange("utrNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 5: Project, etc. (Manual as per request) */}
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">PROJECT (Manual)</Label>
-                    <Input
-                      value={formData.project}
-                      onChange={(e) => handleInputChange("project", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 6: Beneficiary Account Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C Name</Label>
-                    <Input
-                      value={formData.beneficiaryAccountName}
-                      onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C Number</Label>
-                    <Input
-                      value={formData.beneficiaryAccountNumber}
-                      onChange={(e) => handleInputChange("beneficiaryAccountNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 7: Bank Name and IFSC */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary Bank Name</Label>
-                    <Input
-                      value={formData.beneficiaryBankName}
-                      onChange={(e) => handleInputChange("beneficiaryBankName", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary Bank IFSC</Label>
-                    <Input
-                      value={formData.beneficiaryBankIFSC}
-                      onChange={(e) => handleInputChange("beneficiaryBankIFSC", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 8: Particulars and Amount */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 border-b border-gray-400 pb-4">
-                  <div className="md:col-span-8">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Particulars</Label>
-                    <Textarea
-                      value={formData.particulars}
-                      onChange={(e) => handleInputChange("particulars", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-1 min-h-[60px] text-sm focus:border-teal-600 resize-none"
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Amount (₹)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.amount}
-                      onChange={(e) => handleInputChange("amount", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-10 text-xl font-bold text-teal-600 focus:border-teal-600 text-right"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Row 9: Amount in Words */}
-                <div className="bg-teal-50 p-4 rounded-lg border border-teal-100">
-                  <Label className="text-xs font-bold text-teal-700 uppercase">Amount in Words</Label>
-                  <p className="text-sm font-medium text-teal-800 mt-1 italic">
-                    {formData.amountInWords || "Enter amount to see words..."}
-                  </p>
-                </div>
-
-                {/* Row 10: Signatures */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Checked By</Label>
-                    <Input
-                      value={formData.checkedBy}
-                      onChange={(e) => handleInputChange("checkedBy", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Approved By</Label>
-                    <Input
-                      value={formData.approvedBy}
-                      onChange={(e) => handleInputChange("approvedBy", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-6 rounded-xl shadow-lg transition-all"
-                    >
-                      {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Save className="mr-2 h-5 w-5" /> Save Transfer</>}
-                    </Button>
-                  </div>
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Date of Payment</Label>
+                  <Input
+                    type="date"
+                    value={formData.dateOfPayment}
+                    onChange={(e) => handleInputChange("dateOfPayment", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                    required
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </form>
-      </div>
+
+              {/* Row 4: Purpose, Transaction Type, UTR */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">PURPOSE</Label>
+                  <Input
+                    value={formData.purposeOfPayment}
+                    onChange={(e) => handleInputChange("purposeOfPayment", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">
+                    TRANSACTION TYPE
+                  </Label>
+
+                  {/* Fixed Value */}
+                  <div className="border-0 border-b border-gray-400 rounded-none px-1 py-2 h-8 text-sm flex items-center text-gray-800 font-medium">
+                    Contra
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
+                  <Input
+                    value={formData.utrNumber}
+                    onChange={(e) => handleInputChange("utrNumber", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+              </div>
+
+           
+
+              {/* Row 6: Beneficiary Account Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C To</Label>
+                  <Input
+                    value={formData.beneficiaryAccountName}
+                    onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C Number To</Label>
+                  <Input
+                    value={formData.beneficiaryAccountNumber}
+                    onChange={(e) => handleInputChange("beneficiaryAccountNumber", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+              </div>
+
+              {/* Row 7: Bank Name and IFSC */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Bank Name To</Label>
+                  <Input
+                    value={formData.beneficiaryBankName}
+                    onChange={(e) => handleInputChange("beneficiaryBankName", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Bank Name To</Label>
+                  <Input
+                    value={formData.beneficiaryBankIFSC}
+                    onChange={(e) => handleInputChange("beneficiaryBankIFSC", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+              </div>
+
+              {/* Row 8: Particulars and Amount */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 border-b border-gray-400 pb-4">
+                <div className="md:col-span-8">
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Particulars</Label>
+                  <Textarea
+                    value={formData.particulars}
+                    onChange={(e) => handleInputChange("particulars", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-1 min-h-[60px] text-sm focus:border-teal-600 resize-none"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-4">
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => handleInputChange("amount", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-10 text-xl font-bold text-teal-600 focus:border-teal-600 text-right"
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 9: Amount in Words */}
+              <div className="bg-teal-50 p-4 rounded-lg border border-teal-100">
+                <Label className="text-xs font-bold text-teal-700 uppercase">Amount in Words</Label>
+                <p className="text-sm font-medium text-teal-800 mt-1 italic">
+                  {formData.amountInWords || "Enter amount to see words..."}
+                </p>
+              </div>
+
+              {/* Row 10: Signatures */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Approved By</Label>
+                  <Input
+                    value={formData.approvedBy}
+                    onChange={(e) => handleInputChange("approvedBy", e.target.value)}
+                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-6 rounded-xl shadow-lg transition-all"
+                  >
+                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Save className="mr-2 h-5 w-5" /> Save Transfer</>}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </form>
     </div>
   )
 }

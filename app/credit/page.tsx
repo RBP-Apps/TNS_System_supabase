@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LogOut, History, Save, Building2, ArrowLeft, Loader2, DollarSign, Building, CreditCard, User, Briefcase, FileText, Check, ChevronsUpDown, RefreshCw } from "lucide-react"
+import { LogOut, History, Save, ArrowLeft, Loader2, DollarSign, Check, ChevronsUpDown, RefreshCw } from "lucide-react"
 import supabase from "@/lib/supabase"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -26,10 +26,10 @@ const SearchableBeneficiarySelect = ({
   options: any[]
   onSelect: (name: string) => void
 }) => {
-  const [open, setOpen] = React.useState(false)
-  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false)
@@ -39,7 +39,7 @@ const SearchableBeneficiarySelect = ({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const filteredOptions = React.useMemo(() => {
+  const filteredOptions = useMemo(() => {
     if (!value) return options
     return options.filter((opt) =>
       opt.beneficiary_name.toLowerCase().includes(value.toLowerCase())
@@ -55,23 +55,23 @@ const SearchableBeneficiarySelect = ({
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600 pr-8 w-full"
+        className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 pr-8 h-10"
         placeholder="Type or select beneficiary"
         required
       />
       <ChevronsUpDown
-        className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50 cursor-pointer"
+        className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50 cursor-pointer hover:opacity-80 transition-opacity"
         onClick={() => setOpen(!open)}
       />
 
       {open && filteredOptions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none">
+        <div className="absolute z-50 w-full mt-1.5 max-h-60 overflow-auto rounded-xl border border-slate-100 bg-white p-1 text-slate-700 shadow-xl outline-none ring-1 ring-black/5 animate-in fade-in slide-in-from-top-1 duration-200">
           {filteredOptions.map((beneficiary) => (
             <div
               key={beneficiary.beneficiary_name}
               className={cn(
-                "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                value === beneficiary.beneficiary_name && "bg-accent text-accent-foreground"
+                "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors hover:bg-amber-50 hover:text-amber-900",
+                value === beneficiary.beneficiary_name && "bg-amber-50 font-medium text-amber-900"
               )}
               onClick={() => {
                 onSelect(beneficiary.beneficiary_name)
@@ -80,7 +80,7 @@ const SearchableBeneficiarySelect = ({
             >
               <Check
                 className={cn(
-                  "mr-2 h-4 w-4",
+                  "mr-2 h-4 w-4 text-amber-600",
                   value === beneficiary.beneficiary_name ? "opacity-100" : "opacity-0"
                 )}
               />
@@ -113,10 +113,9 @@ export default function AddCreditPage() {
   const [userRole, setUserRole] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true)
-  
+
   const [companyNames, setCompanyNames] = useState<string[]>([])
   const [bankAccounts, setBankAccounts] = useState<string[]>([])
-  const [transactionTypes, setTransactionTypes] = useState<string[]>([])
   const [filteredBankAccounts, setFilteredBankAccounts] = useState<string[]>([])
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
 
@@ -140,8 +139,6 @@ export default function AddCreditPage() {
     entryDoneBy: "",
     checkedBy: "",
     approvedBy: "",
-    vendorNumber: "",
-    vendorEmail: "",
   })
 
   useEffect(() => {
@@ -164,7 +161,6 @@ export default function AddCreditPage() {
       await Promise.all([
         fetchCompanyNames(),
         fetchBankAccounts(),
-        fetchTransactionTypes(),
         fetchBeneficiaries()
       ])
     } catch (error) {
@@ -190,19 +186,12 @@ export default function AddCreditPage() {
     }
   }
 
-  const fetchTransactionTypes = async () => {
-    const { data, error } = await supabase.from('master').select('transaction_type')
-    if (!error && data) {
-      setTransactionTypes([...new Set(data.map(i => i.transaction_type).filter(Boolean))])
-    }
-  }
-
   const fetchBeneficiaries = async () => {
     const { data, error } = await supabase
       .from('History')
       .select('beneficiary_name, company_name, bank_ac_from, transaction_type, beneficiary_ac_name, beneficiary_ac_number, beneficiary_bank_name, beneficiary_bank_ifsc')
       .order('created_date', { ascending: false })
-    
+
     if (!error && data) {
       const unique = new Map()
       data.forEach(item => {
@@ -227,7 +216,7 @@ export default function AddCreditPage() {
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: string[]) => {
     if (!selectedCompany || !allBankAccounts.length) return allBankAccounts
-    
+
     const keywords = selectedCompany.split(' ').filter(word => {
       const upperWord = word.toUpperCase()
       return word.length > 2 && !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY'].includes(upperWord)
@@ -442,8 +431,6 @@ export default function AddCreditPage() {
         entryDoneBy: username,
         checkedBy: "",
         approvedBy: "",
-        vendorNumber: "",
-        vendorEmail: "",
       })
     } catch (error: any) {
       console.error("Error adding credit:", error)
@@ -459,284 +446,219 @@ export default function AddCreditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="bg-orange-600 p-2 rounded-lg">
-              <DollarSign className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">Add Receipt Record</h1>
-              <p className="text-sm text-gray-600">Logged in as: {username}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => router.push("/voucher")} variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
-               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Voucher
-            </Button>
-            <Button onClick={() => router.push("/self-transfer")} variant="outline" className="bg-teal-50 border-teal-200 text-teal-700">
-              <RefreshCw className="mr-2 h-4 w-4" /> Contra
-            </Button>
-            <Button onClick={() => router.push("/history")} variant="outline" className="bg-green-50 border-green-200 text-green-700">
-              <History className="mr-2 h-4 w-4" /> History
-            </Button>
-            <Button onClick={handleLogout} variant="outline" className="bg-red-50 border-red-200 text-red-700">
-              <LogOut className="mr-2 h-4 w-4" /> Logout
-            </Button>
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-4xl">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card className="shadow-lg border border-slate-100 bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 text-white py-6 px-8">
+            <CardTitle className="text-center text-xl font-bold tracking-wider uppercase">Receipt Voucher</CardTitle>
+          </CardHeader>
+          <CardContent className="p-8 space-y-8">
+            
+            {/* Section 1: Payer & Company Info */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                Payer & Company Details
+              </h3>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <form onSubmit={handleSubmit}>
-          <Card className="shadow-xl border-0 bg-white">
-            <CardHeader className="bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-t-lg">
-              <CardTitle className="text-center">RECEIPT VOUCHER</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="bg-white border-2 border-gray-800 p-4 space-y-6">
-                
-                {/* Row 1: Beneficiary and PO */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 border-b border-gray-400 pb-4">
-                  <div className="md:col-span-8">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Payer Name</Label>
-                    <SearchableBeneficiarySelect
-                      value={formData.beneficiaryName}
-                      onValueChange={(val) => handleBeneficiarySelection(val)}
-                      options={beneficiaries}
-                      onSelect={handleBeneficiarySelection}
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">PO. NUMBER</Label>
-                    <Input
-                      value={formData.poNumber}
-                      onChange={(e) => handleInputChange("poNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 2: Company, Bank, Date */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Company Name</Label>
-                    <Select value={formData.companyName} onValueChange={handleCompanySelection}>
-                      <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600">
-                        <SelectValue placeholder="Select Company" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companyNames.map((c, i) => <SelectItem key={i} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">BANK AC FROM</Label>
-                    <Select value={formData.bankAcFrom} onValueChange={(v) => handleInputChange("bankAcFrom", v)}>
-                      <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600">
-                        <SelectValue placeholder="Select Bank" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredBankAccounts.map((a, i) => <SelectItem key={i} value={a}>{a}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Date of Payment</Label>
-                    <Input
-                      type="date"
-                      value={formData.dateOfPayment}
-                      onChange={(e) => handleInputChange("dateOfPayment", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Row 3: Vendor Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Vendor WhatsApp Number</Label>
-                    <Input
-                      value={formData.vendorNumber}
-                      onChange={(e) => handleInputChange("vendorNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                      placeholder="Enter 10 digit number"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Vendor Email</Label>
-                    <Input
-                      type="email"
-                      value={formData.vendorEmail}
-                      onChange={(e) => handleInputChange("vendorEmail", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                      placeholder="Enter email address"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 4: Purpose, Transaction Type, UTR */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">PURPOSE</Label>
-                    <Input
-                      value={formData.purposeOfPayment}
-                      onChange={(e) => handleInputChange("purposeOfPayment", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
-                 <div>
-  <Label className="text-xs font-bold text-gray-700 uppercase">
-    TRANSACTION TYPE
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="md:col-span-3">
+  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+    Payer Name
   </Label>
 
-  {/* Fixed Value */}
-  <div className="border-0 border-b border-gray-400 rounded-none px-1 py-2 h-8 text-sm flex items-center text-gray-800 font-medium">
-    Receipt
-  </div>
+  <Input
+    type="text"
+    placeholder="Enter Payer Name"
+    value={formData.beneficiaryName}
+    onChange={(e) =>
+      setFormData((prev) => ({
+        ...prev,
+        beneficiaryName: e.target.value,
+      }))
+    }
+  />
 </div>
-                  {/* <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
-                    <Select value={formData.transactionType} onValueChange={(v) => handleInputChange("transactionType", v)}>
-                      <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600">
-                        <SelectValue placeholder="Select Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {transactionTypes.map((t, i) => <SelectItem key={i} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div> */}
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">UTR Number</Label>
-                    <Input
-                      value={formData.utrNumber}
-                      onChange={(e) => handleInputChange("utrNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
+
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Company Name</Label>
+                  <Select value={formData.companyName} onValueChange={handleCompanySelection}>
+                    <SelectTrigger className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10">
+                      <SelectValue placeholder="Select Company" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-100 shadow-xl">
+                      {companyNames.map((c, i) => (
+                        <SelectItem key={i} value={c} className="rounded-lg py-2 hover:bg-slate-50">
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Credited Bank Account</Label>
+                  <Select value={formData.bankAcFrom} onValueChange={(v) => handleInputChange("bankAcFrom", v)}>
+                    <SelectTrigger className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10">
+                      <SelectValue placeholder="Select Bank" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-100 shadow-xl">
+                      {filteredBankAccounts.map((a, i) => (
+                        <SelectItem key={i} value={a} className="rounded-lg py-2 hover:bg-slate-50">
+                          {a}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Date of Payment</Label>
+                  <Input
+                    type="date"
+                    value={formData.dateOfPayment}
+                    onChange={(e) => handleInputChange("dateOfPayment", e.target.value)}
+                    className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* Section 2: Transaction Details */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                Transaction Details
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Purpose</Label>
+                  <Input
+                    value={formData.purposeOfPayment}
+                    onChange={(e) => handleInputChange("purposeOfPayment", e.target.value)}
+                    className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10"
+                    placeholder="e.g. Services payment"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Transaction Type</Label>
+                  <div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-500 h-10 flex items-center font-medium">
+                    Receipt
                   </div>
                 </div>
 
-                {/* Row 5: Project, etc. (Manual as per request) */}
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">PROJECT (Manual)</Label>
-                    <Input
-                      value={formData.project}
-                      onChange={(e) => handleInputChange("project", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">UTR Number</Label>
+                  <Input
+                    value={formData.utrNumber}
+                    onChange={(e) => handleInputChange("utrNumber", e.target.value)}
+                    className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10"
+                    placeholder="Enter UTR number"
+                  />
                 </div>
 
-                {/* Row 6: Beneficiary Account Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C Name</Label>
-                    <Input
-                      value={formData.beneficiaryAccountName}
-                      onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C Number</Label>
-                    <Input
-                      value={formData.beneficiaryAccountNumber}
-                      onChange={(e) => handleInputChange("beneficiaryAccountNumber", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Project (Manual)</Label>
+                  <Input
+                    value={formData.project}
+                    onChange={(e) => handleInputChange("project", e.target.value)}
+                    className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10"
+                    placeholder="Enter project name"
+                  />
                 </div>
+              </div>
+            </div>
 
-                {/* Row 7: Bank Name and IFSC */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary Bank Name</Label>
-                    <Input
-                      value={formData.beneficiaryBankName}
-                      onChange={(e) => handleInputChange("beneficiaryBankName", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary Bank IFSC</Label>
-                    <Input
-                      value={formData.beneficiaryBankIFSC}
-                      onChange={(e) => handleInputChange("beneficiaryBankIFSC", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
+            <hr className="border-slate-100" />
+
+            {/* Section 4: Particulars & Amount */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                Particulars & Amount
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                <div className="md:col-span-8">
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Particulars</Label>
+                  <Textarea
+                    value={formData.particulars}
+                    onChange={(e) => handleInputChange("particulars", e.target.value)}
+                    className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 min-h-[90px] resize-none"
+                    placeholder="Enter details of the transaction..."
+                    required
+                  />
                 </div>
-
-                {/* Row 8: Particulars and Amount */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 border-b border-gray-400 pb-4">
-                  <div className="md:col-span-8">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Particulars</Label>
-                    <Textarea
-                      value={formData.particulars}
-                      onChange={(e) => handleInputChange("particulars", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-1 min-h-[60px] text-sm focus:border-orange-600 resize-none"
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Amount (₹)</Label>
+                <div className="md:col-span-4">
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Amount (₹)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold text-lg">₹</span>
                     <Input
                       type="number"
                       step="0.01"
                       value={formData.amount}
                       onChange={(e) => handleInputChange("amount", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-10 text-xl font-bold text-orange-600 focus:border-orange-600 text-right"
+                      className="w-full bg-slate-50/50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-lg font-bold text-amber-600 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-12 text-right"
                       placeholder="0.00"
                       required
                     />
                   </div>
                 </div>
+              </div>
 
-                {/* Row 9: Amount in Words */}
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                  <Label className="text-xs font-bold text-orange-700 uppercase">Amount in Words</Label>
-                  <p className="text-sm font-medium text-orange-800 mt-1 italic">
+              {/* Amount in Words */}
+              <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex items-start space-x-3 mt-3">
+                <div className="bg-amber-100 p-1.5 rounded-lg text-amber-600 mt-0.5">
+                  <DollarSign className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Amount in Words</span>
+                  <p className="text-sm font-medium text-amber-900 mt-0.5 italic">
                     {formData.amountInWords || "Enter amount to see words..."}
                   </p>
                 </div>
-
-                {/* Row 10: Signatures */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Checked By</Label>
-                    <Input
-                      value={formData.checkedBy}
-                      onChange={(e) => handleInputChange("checkedBy", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-bold text-gray-700 uppercase">Approved By</Label>
-                    <Input
-                      value={formData.approvedBy}
-                      onChange={(e) => handleInputChange("approvedBy", e.target.value)}
-                      className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-orange-600"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-6 rounded-xl shadow-lg transition-all"
-                    >
-                      {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Save className="mr-2 h-5 w-5" /> Save Credit</>}
-                    </Button>
-                  </div>
-                </div>
               </div>
-            </CardContent>
-          </Card>
-        </form>
-      </div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* Section 5: Checked By & Save */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+              <div>
+                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Checked By</Label>
+                <Input
+                  value={formData.checkedBy}
+                  onChange={(e) => handleInputChange("checkedBy", e.target.value)}
+                  className="w-full bg-slate-50/50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all duration-200 h-10"
+                  placeholder="Enter name"
+                />
+              </div>
+
+              <div>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-5 rounded-xl shadow-md shadow-orange-500/10 hover:shadow-orange-500/20 transition-all duration-200 flex items-center justify-center gap-2 h-10 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" /> Save Credit
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+          </CardContent>
+        </Card>
+      </form>
     </div>
   )
 }
