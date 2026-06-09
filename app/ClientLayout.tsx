@@ -133,41 +133,42 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <aside className={`hidden md:flex flex-col fixed inset-y-0 left-0 z-30 bg-slate-900 text-slate-300 border-r border-slate-800 shadow-xl transition-all duration-300 ease-in-out ${
         isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
       }`}>
-        {/* Collapse Toggle Button */}
-        <button
-          onClick={toggleSidebar}
-          className="absolute -right-3 top-7 z-40 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white p-1 rounded-full shadow-md cursor-pointer transition-colors"
-          title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {isSidebarCollapsed ? (
-            <ChevronRight className="h-3.5 w-3.5" />
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-3.5 w-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          )}
-        </button>
-
-        {/* Brand Logo */}
-        <div className={`flex items-center border-b border-slate-800/60 bg-slate-950/40 px-6 py-6 transition-all duration-300 ${
-          isSidebarCollapsed ? "justify-center" : "space-x-3.5"
+        {/* Brand Logo & Collapse Toggle */}
+        <div className={`flex border-b border-slate-800/60 bg-slate-950/40 px-6 py-6 transition-all duration-300 ${
+          isSidebarCollapsed ? "flex-col items-center justify-center space-y-4" : "items-center justify-between"
         }`}>
-          <div className="bg-gradient-to-tr from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/10 shrink-0">
-            <Building2 className="h-5 w-5 text-white" />
-          </div>
-          {!isSidebarCollapsed && (
-            <div className="transition-all duration-300 opacity-100 whitespace-nowrap overflow-hidden">
-              <h2 className="text-sm font-extrabold text-white tracking-widest uppercase">TNS System</h2>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Payment Portal</p>
+          <div className="flex items-center space-x-3.5">
+            <div className="bg-gradient-to-tr from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/10 shrink-0">
+              <Building2 className="h-5 w-5 text-white" />
             </div>
-          )}
+            {!isSidebarCollapsed && (
+              <div className="transition-all duration-300 opacity-100 whitespace-nowrap overflow-hidden">
+                <h2 className="text-sm font-extrabold text-white tracking-widest uppercase">TNS System</h2>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Payment Portal</p>
+              </div>
+            )}
+          </div>
+          
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg cursor-pointer transition-colors shrink-0"
+            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Navigation Links */}
