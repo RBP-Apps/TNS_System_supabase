@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LogOut, History, Save, Building2, ArrowLeft, Loader2, RefreshCw, Building, CreditCard, User, Briefcase, FileText, Check, ChevronsUpDown } from "lucide-react"
 import supabase from "@/lib/supabase"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import { generateColoredVoucherPDF, VoucherData } from "@/lib/voucher-exports"
 import React from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -178,149 +177,39 @@ export default function SelfTransferPage() {
     })
   }
 
-  const generatePDFBlob = async (data: any) => {
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new jsPDF("p", "mm", "a4")
-        const pageWidth = 210
-        const pageHeight = 297
-        const margin = 10
-        let currentY = 15
-
-        const colors = {
-          primary: [0, 128, 128] as [number, number, number], // Teal
-          secondary: [0, 150, 150] as [number, number, number],
-          background: {
-            light: [240, 255, 255] as [number, number, number], // Very light teal
-            teal: [224, 255, 255] as [number, number, number],
-          },
-          border: [0, 128, 128] as [number, number, number]
-        }
-
-        const formatDate = (d: string) => new Date(d).toLocaleDateString("en-IN")
-        const formatCurrency = (v: string) => "Rs. " + parseFloat(v || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })
-
-        doc.setDrawColor(...colors.border)
-        doc.setLineWidth(2)
-        doc.rect(margin, margin, pageWidth - 2 * margin, pageHeight - 2 * margin)
-
-        doc.setFillColor(...colors.background.teal)
-        doc.rect(margin + 3, currentY, pageWidth - 2 * margin - 6, 22, "FD")
-        doc.setFont("helvetica", "bold")
-        doc.setFontSize(18)
-        doc.setTextColor(...colors.primary)
-        doc.text(data.companyName || "COMPANY NAME", pageWidth / 2, currentY + 8, { align: "center" })
-        doc.setFontSize(12)
-        doc.text("CONTRA VOUCHER", pageWidth / 2, currentY + 16, { align: "center" })
-
-        currentY += 28
-
-        const info = [
-          [
-            "DATE:",
-            formatDate(data.dateOfPayment),
-            "TYPE:",
-            data.transactionType,
-            "BANK AC:",
-            data.bankAcFrom,
-          ],
-          [
-            "UTR NO:",
-            data.utrNumber,
-            "PURPOSE:",
-            data.purposeOfPayment,
-            "",
-            "",
-          ],
-          [
-            "BANK A/C TO:",
-            data.beneficiaryAccountName,
-            "ACCOUNT NO:",
-            data.beneficiaryAccountNumber,
-            "",
-            "",
-          ],
-          [
-            "BANK NAME:",
-            data.beneficiaryBankName,
-            "IFSC:",
-            data.beneficiaryBankIFSC,
-            "",
-            "",
-          ],
-        ]
-
-        autoTable(doc, {
-          startY: currentY,
-          body: info,
-          styles: { fontSize: 9, cellPadding: 3, lineColor: colors.border, lineWidth: 0.5 },
-          columnStyles: { 0: { fontStyle: 'bold', fillColor: colors.background.light }, 2: { fontStyle: 'bold', fillColor: colors.background.light }, 4: { fontStyle: 'bold', fillColor: colors.background.light } },
-          didDrawPage: (d) => { currentY = d.cursor!.y }
-        })
-
-        currentY += 10
-        autoTable(doc, {
-          startY: currentY,
-          body: [
-            [{ content: "PARTICULARS", styles: { fontStyle: 'bold', halign: 'center', fillColor: colors.background.teal } }, { content: "AMOUNT", styles: { fontStyle: 'bold', halign: 'center', fillColor: colors.background.teal } }],
-            [{ content: data.particulars || "", styles: { minCellHeight: 20 } }, { content: formatCurrency(data.amount), styles: { halign: 'center', valign: 'middle', fontSize: 14, fontStyle: 'bold', textColor: colors.primary } }]
-          ],
-          columnStyles: { 0: { cellWidth: 130 }, 1: { cellWidth: 60 } },
-          didDrawPage: (d) => { currentY = d.cursor!.y }
-        })
-
-        currentY += 5
-        doc.setFillColor(...colors.background.teal)
-        doc.rect(margin + 3, currentY, pageWidth - 2 * margin - 6, 10, "FD")
-        doc.setFontSize(10)
-        doc.setTextColor(0)
-        doc.text(`AMOUNT IN WORDS: ${data.amountInWords || ""}`, margin + 6, currentY + 7)
-
-        currentY += 20
-        const sigs = [
-          ["APPROVED BY"],
-          [""],
-          [data.approvedBy || ""]
-        ]
-        autoTable(doc, {
-          startY: currentY,
-          body: sigs,
-          styles: { halign: 'center', fontSize: 9 },
-          columnStyles: { 0: { cellWidth: 63 }, 1: { cellWidth: 63 }, 2: { cellWidth: 63 } },
-          didDrawCell: (d) => {
-            if (d.row.index === 1) {
-              doc.line(d.cell.x + 5, d.cell.y + d.cell.height - 2, d.cell.x + d.cell.width - 5, d.cell.y + d.cell.height - 2)
-            }
-          }
-        })
-
-        const base64 = doc.output("datauristring").split(",")[1]
-        resolve(base64)
-      } catch (e) { reject(e) }
-    })
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      // 1. Generate PDF
-      const pdfBase64 = await generatePDFBlob(formData)
-
-      const fileName = `Contra_${Date.now()}.pdf`
-
-      const byteCharacters = atob(pdfBase64 as string)
-      const byteNumbers = new Array(byteCharacters.length)
-
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      // 1. Generate PDF using unified helper
+      const pdfData: VoucherData = {
+        id: "",
+        voucherNo: "",
+        companyName: formData.companyName,
+        dateOfPayment: formData.dateOfPayment,
+        dateOfPaymentProcess: formData.dateOfPayment,
+        beneficiaryName: "",
+        amount: formData.amount,
+        amountInWords: formData.amountInWords,
+        bankAcFrom: formData.bankAcFrom,
+        purposeOfPayment: formData.purposeOfPayment,
+        transactionType: formData.transactionType,
+        project: "",
+        particulars: formData.particulars,
+        entryDoneBy: "",
+        checkedBy: "",
+        approvedBy: formData.approvedBy,
+        beneficiaryAcName: formData.beneficiaryAccountName,
+        beneficiaryAcNumber: formData.beneficiaryAccountNumber,
+        beneficiaryBankName: formData.beneficiaryBankName,
+        beneficiaryBankIfsc: formData.beneficiaryBankIFSC,
+        pdfLink: "",
+        name: "",
+        timestamp: new Date().toISOString(),
+        recordType: "Transfer"
       }
-
-      const pdfBlob = new Blob(
-        [new Uint8Array(byteNumbers)],
-        { type: "application/pdf" }
-      )
+      const { pdfBlob, fileName } = await generateColoredVoucherPDF(pdfData)
 
       // 2. Upload PDF
       const { error: uploadError } = await supabase.storage

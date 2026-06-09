@@ -130,12 +130,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar - Desktop */}
-      <aside className={`hidden md:flex flex-col fixed inset-y-0 left-0 z-30 bg-slate-900 text-slate-300 border-r border-slate-800 shadow-xl transition-all duration-300 ease-in-out ${
+      <aside className={`hidden md:flex flex-col fixed inset-y-0 left-0 z-30 bg-slate-900 text-slate-300 border-r border-slate-800 shadow-xl transition-[width] duration-300 ease-in-out ${
         isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
       }`}>
         {/* Brand Logo & Collapse Toggle */}
-        <div className={`flex border-b border-slate-800/60 bg-slate-950/40 px-6 py-6 transition-all duration-300 ${
-          isSidebarCollapsed ? "flex-col items-center justify-center space-y-4" : "items-center justify-between"
+        <div className={`flex border-b border-slate-800/60 bg-slate-950/40 py-6 transition-all duration-300 ${
+          isSidebarCollapsed ? "px-2 flex-col items-center justify-center space-y-4" : "px-6 items-center justify-between"
         }`}>
           <div className="flex items-center space-x-3.5">
             <div className="bg-gradient-to-tr from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/10 shrink-0">
@@ -319,7 +319,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300 ease-in-out ${
+      <div className={`flex-1 flex flex-col min-h-screen min-w-0 transition-[padding-left] duration-300 ease-in-out ${
         isSidebarCollapsed ? "md:pl-20" : "md:pl-64 lg:pl-72"
       }`}>
         {/* Unified Top Header Bar */}

@@ -63,6 +63,19 @@ export interface ExportSummaryOptions {
 
 export const downloadPDF = async (voucher: VoucherData) => {
   try {
+    if (voucher.recordType === "Credit" || voucher.recordType === "Transfer" || !voucher.pdfLink) {
+      const { pdfBlob, fileName } = await generateColoredVoucherPDF(voucher)
+      const url = window.URL.createObjectURL(pdfBlob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      return
+    }
+
     if (voucher.pdfLink && voucher.pdfLink.includes("http")) {
       let downloadUrl = voucher.pdfLink
       if (voucher.pdfLink.includes("drive.google.com")) {
@@ -920,241 +933,72 @@ export const generateColoredVoucherPDF = async (editVoucher: VoucherData): Promi
 
   currentY += 28
 
-  const voucherInfoData = isTransfer
-    ? [
-        [
-          {
-            content: "DATE OF PAYMENT:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: localFormatDate(editVoucher.dateOfPaymentProcess), styles: { fillColor: colors.background.blue } },
-          {
-            content: "TRANSACTION TYPE:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.transactionType || "Contra",
-            styles: { fillColor: colors.background.blue, textColor: colors.accent, fontStyle: BOLD },
-          },
-          {
-            content: "BANK A/C FROM:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: editVoucher.bankAcFrom || "", styles: { fillColor: colors.background.blue } },
-        ],
-        [
-          {
-            content: "UTR NUMBER:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.utrNumber || "", styles: { fillColor: colors.background.yellow } },
-          {
-            content: "COMPANY NAME:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.companyName || "", styles: { fillColor: colors.background.yellow } },
-          {
-            content: "PURPOSE:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.purposeOfPayment || "", styles: { fillColor: colors.background.yellow } },
-        ],
-        [
-          {
-            content: "BANK A/C TO:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.green, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryAcName || "", styles: { fillColor: colors.background.green, fontStyle: BOLD } },
-          {
-            content: "ACCOUNT NO TO:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.green, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryAcNumber || "", styles: { fillColor: colors.background.green, colSpan: 3 } },
-          "",
-          "",
-        ],
-        [
-          {
-            content: "BANK NAME TO:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.light, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryBankName || "", styles: { fillColor: colors.background.light } },
-          {
-            content: "IFSC CODE TO:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.light, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryBankIfsc || "", styles: { fillColor: colors.background.light, colSpan: 3 } },
-          "",
-          "",
-        ],
-      ]
-    : isCredit
-    ? [
-        [
-          {
-            content: "CREDIT ID:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: editVoucher.id || "", styles: { fillColor: colors.background.blue } },
-          {
-            content: "DATE OF PAYMENT:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: localFormatDate(editVoucher.dateOfPaymentProcess), styles: { fillColor: colors.background.blue } },
-          {
-            content: "TRANSACTION TYPE:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.transactionType || "",
-            styles: { fillColor: colors.background.blue, textColor: colors.accent, fontStyle: BOLD },
-          },
-        ],
-        [
-          {
-            content: "BANK A/C FROM:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.bankAcFrom || "", styles: { fillColor: colors.background.yellow } },
-          {
-            content: "COMPANY:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.companyName || "", styles: { fillColor: colors.background.yellow } },
-          {
-            content: "PURPOSE:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.purposeOfPayment || "", styles: { fillColor: colors.background.yellow } },
-        ],
-        [
-          {
-            content: "PROJECT:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.green, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.project || "",
-            styles: { fillColor: colors.background.green, textColor: colors.success, fontStyle: BOLD },
-          },
-          {
-            content: "PAYER NAME (PAID BY):",
-            styles: { fontStyle: BOLD, fillColor: colors.background.green, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.beneficiaryName || "",
-            styles: { fillColor: colors.background.green, colSpan: 3, fontStyle: BOLD },
-          },
-          "",
-          "",
-        ],
-        [
-          {
-            content: "UTR NUMBER:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.light, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.utrNumber || "",
-            styles: { fillColor: colors.background.light, colSpan: 5 },
-          },
-          "",
-          "",
-          "",
-          "",
-        ],
-      ]
-    : [
-        [
-          {
-            content: "VOUCHER NO:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: editVoucher.voucherNo || "", styles: { fillColor: colors.background.blue } },
-          {
-            content: "DATE OF PAYMENT:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: localFormatDate(editVoucher.dateOfPaymentProcess), styles: { fillColor: colors.background.blue } },
-          {
-            content: "TRANSACTION TYPE:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.transactionType || "",
-            styles: { fillColor: colors.background.blue, textColor: colors.accent, fontStyle: BOLD },
-          },
-        ],
-        [
-          {
-            content: "BANK A/C FROM:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.bankAcFrom || "", styles: { fillColor: colors.background.yellow } },
-          {
-            content: "COMPANY:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.companyName || "", styles: { fillColor: colors.background.yellow } },
-          {
-            content: "PURPOSE:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.yellow, textColor: colors.primary },
-          },
-          { content: editVoucher.purposeOfPayment || "", styles: { fillColor: colors.background.yellow } },
-        ],
-        [
-          {
-            content: "PROJECT:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.green, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.project || "",
-            styles: { fillColor: colors.background.green, textColor: colors.success, fontStyle: BOLD },
-          },
-          {
-            content: "BENEFICIARY NAME (PAID TO):",
-            styles: { fontStyle: BOLD, fillColor: colors.background.green, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.beneficiaryName || "",
-            styles: { fillColor: colors.background.green, colSpan: 3, fontStyle: BOLD },
-          },
-          "",
-          "",
-        ],
-        [
-          {
-            content: "PO NUMBER:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: editVoucher.poNumber || "N/A", styles: { fillColor: colors.background.blue } },
-          {
-            content: "BENEFICIARY A/C NAME:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryAcName || "", styles: { fillColor: colors.background.blue } },
-          {
-            content: "BENEFICIARY A/C NUMBER:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.blue, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryAcNumber || "", styles: { fillColor: colors.background.blue } },
-        ],
-        [
-          {
-            content: "BENEFICIARY BANK NAME:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.light, textColor: colors.primary },
-          },
-          { content: editVoucher.beneficiaryBankName || "", styles: { fillColor: colors.background.light } },
-          {
-            content: "BENEFICIARY BANK IFSC:",
-            styles: { fontStyle: BOLD, fillColor: colors.background.light, textColor: colors.primary },
-          },
-          {
-            content: editVoucher.beneficiaryBankIfsc || "",
-            styles: { fillColor: colors.background.light, colSpan: 3 },
-          },
-          "",
-          "",
-        ],
-      ]
+  const activeFields: Array<{ label: string; value: string; section: "blue" | "yellow" | "green" | "light" }> = []
+
+  const addField = (label: string, val: any, section: "blue" | "yellow" | "green" | "light") => {
+    if (!val) return
+    const strVal = String(val).trim()
+    if (strVal !== "" && strVal !== "N/A" && strVal !== "₹0" && strVal !== "₹NaN") {
+      activeFields.push({ label, value: strVal, section })
+    }
+  }
+
+  if (isTransfer) {
+    addField("DATE OF PAYMENT", editVoucher.dateOfPaymentProcess ? localFormatDate(editVoucher.dateOfPaymentProcess) : null, "blue")
+    addField("TRANSACTION TYPE", editVoucher.transactionType || "Contra", "blue")
+    addField("BANK A/C FROM", editVoucher.bankAcFrom, "blue")
+    addField("UTR NUMBER", editVoucher.utrNumber, "yellow")
+    addField("COMPANY NAME", editVoucher.companyName, "yellow")
+    addField("PURPOSE", editVoucher.purposeOfPayment || editVoucher.purpose, "yellow")
+    addField("BANK A/C TO", editVoucher.beneficiaryAcName || editVoucher.bank_ac_to, "green")
+    addField("ACCOUNT NO TO", editVoucher.beneficiaryAcNumber || editVoucher.bank_ac_number_to, "green")
+    addField("BANK NAME TO", editVoucher.beneficiaryBankName || editVoucher.bank_name_to, "light")
+    addField("IFSC CODE TO", editVoucher.beneficiaryBankIfsc || editVoucher.ifsc_to, "light")
+  } else if (isCredit) {
+    addField("CREDIT ID", editVoucher.id, "blue")
+    addField("DATE OF PAYMENT", editVoucher.dateOfPaymentProcess ? localFormatDate(editVoucher.dateOfPaymentProcess) : null, "blue")
+    addField("TRANSACTION TYPE", editVoucher.transactionType || "Receipt", "blue")
+    addField("BANK A/C FROM", editVoucher.bankAcFrom, "yellow")
+    addField("COMPANY", editVoucher.companyName, "yellow")
+    addField("PURPOSE", editVoucher.purposeOfPayment || editVoucher.purpose, "yellow")
+    addField("PROJECT", editVoucher.project, "green")
+    addField("PAYER NAME", editVoucher.beneficiaryName, "green")
+    addField("UTR NUMBER", editVoucher.utrNumber, "light")
+  } else {
+    addField("VOUCHER NO", editVoucher.voucherNo, "blue")
+    addField("DATE OF PAYMENT", editVoucher.dateOfPaymentProcess ? localFormatDate(editVoucher.dateOfPaymentProcess) : null, "blue")
+    addField("TRANSACTION TYPE", editVoucher.transactionType || "Debit", "blue")
+    addField("BANK A/C FROM", editVoucher.bankAcFrom, "yellow")
+    addField("COMPANY", editVoucher.companyName, "yellow")
+    addField("PURPOSE", editVoucher.purposeOfPayment || editVoucher.purpose, "yellow")
+    addField("PROJECT", editVoucher.project, "green")
+    addField("BENEFICIARY NAME", editVoucher.beneficiaryName, "green")
+    addField("PO NUMBER", editVoucher.poNumber, "green")
+    addField("BENEFICIARY A/C NAME", editVoucher.beneficiaryAcName, "light")
+    addField("BENEFICIARY A/C NO", editVoucher.beneficiaryAcNumber, "light")
+    addField("BENEFICIARY BANK NAME", editVoucher.beneficiaryBankName, "light")
+    addField("BENEFICIARY BANK IFSC", editVoucher.beneficiaryBankIfsc, "light")
+  }
+
+  const voucherInfoData: any[] = []
+  for (let i = 0; i < activeFields.length; i += 2) {
+    const f1 = activeFields[i]
+    const f2 = activeFields[i + 1]
+
+    const row = [
+      {
+        content: f1.label + ":",
+        styles: { fontStyle: BOLD, fillColor: colors.background[f1.section], textColor: colors.primary },
+      },
+      { content: f1.value, styles: { fillColor: colors.background[f1.section] } },
+      f2 ? {
+        content: f2.label + ":",
+        styles: { fontStyle: BOLD, fillColor: colors.background[f2.section], textColor: colors.primary },
+      } : { content: "", styles: { fillColor: colors.background.light } },
+      f2 ? { content: f2.value, styles: { fillColor: colors.background[f2.section] } } : { content: "", styles: { fillColor: colors.background.light } }
+    ]
+    voucherInfoData.push(row)
+  }
 
   autoTable(doc, {
     startY: currentY,
@@ -1171,12 +1015,10 @@ export const generateColoredVoucherPDF = async (editVoucher: VoucherData): Promi
       overflow: "linebreak",
     },
     columnStyles: {
-      0: { cellWidth: 30, fontSize: 8 },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 30, fontSize: 8 },
-      3: { cellWidth: 30 },
-      4: { cellWidth: 30, fontSize: 8 },
-      5: { cellWidth: 30 },
+      0: { cellWidth: 32, fontSize: 8 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 32, fontSize: 8 },
+      3: { cellWidth: 60 },
     },
     didDrawPage: (data) => {
       if (data.cursor && typeof data.cursor.y === "number") {
