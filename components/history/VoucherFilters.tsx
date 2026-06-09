@@ -197,7 +197,13 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
-                placeholder="Search by voucher no, beneficiary, project, purpose, company..."
+                placeholder={
+                  recordType === "Debit"
+                    ? "Search by voucher no, beneficiary, project, purpose, company..."
+                    : recordType === "Credit"
+                    ? "Search by payer, company, project, purpose..."
+                    : "Search by company, purpose..."
+                }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 h-10 border-slate-200 focus:border-blue-500 text-sm rounded-xl transition-all duration-150"
@@ -205,15 +211,17 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
             </div>
           </div>
 
-          {/* Beneficiary Name */}
+          {/* Beneficiary Name / Payer Name / Bank AC To */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Beneficiary Name</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+              {recordType === "Debit" ? "Beneficiary Name" : recordType === "Credit" ? "Payer Name" : "Bank A/C To"}
+            </label>
             <SearchableSelect
               value={selectedName}
               onValueChange={setSelectedName}
               options={uniqueNames}
-              placeholder="Names"
-              allLabel="All Names"
+              placeholder={recordType === "Debit" ? "Names" : recordType === "Credit" ? "Payers" : "Bank Accounts"}
+              allLabel={recordType === "Debit" ? "All Names" : recordType === "Credit" ? "All Payers" : "All Bank Accounts"}
             />
           </div>
 
@@ -229,8 +237,8 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
             />
           </div>
 
-          {/* Project Dropdown (only show if Debit) */}
-          {recordType === "Debit" && (
+          {/* Project Dropdown (hide if Transfer) */}
+          {recordType !== "Transfer" && (
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Project</label>
               <SearchableSelect
@@ -243,22 +251,20 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
             </div>
           )}
 
-          {/* Purpose Dropdown (only show if Debit) */}
-          {recordType === "Debit" && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Purpose</label>
-              <SearchableSelect
-                value={selectedPurpose}
-                onValueChange={setSelectedPurpose}
-                options={uniquePurposes}
-                placeholder="Purposes"
-                allLabel="All Purposes"
-              />
-            </div>
-          )}
+          {/* Purpose Dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Purpose</label>
+            <SearchableSelect
+              value={selectedPurpose}
+              onValueChange={setSelectedPurpose}
+              options={uniquePurposes}
+              placeholder="Purposes"
+              allLabel="All Purposes"
+            />
+          </div>
 
-          {/* Transaction Type Dropdown (only show if Debit) */}
-          {recordType === "Debit" && (
+          {/* Transaction Type Dropdown (hide if Transfer) */}
+          {recordType !== "Transfer" && (
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Transaction Type</label>
               <SearchableSelect

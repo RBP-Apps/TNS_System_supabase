@@ -234,11 +234,6 @@ export default function VoucherPage() {
 
   const handleCompanySelection = (value: string) => {
 
-    // console.log("\n🏢 Company Selection Handler Called")
-
-    // console.log("Selected company:", value)
-
-    // console.log("Current bankAccounts state:", bankAccounts)
 
     handleInputChange("companyName", value)
 
@@ -255,7 +250,6 @@ export default function VoucherPage() {
 
       if (voucherData.bankAcFrom && !filtered.includes(voucherData.bankAcFrom)) {
 
-        // console.log("Resetting bank account selection")
 
         handleInputChange("bankAcFrom", "")
 
@@ -461,7 +455,6 @@ export default function VoucherPage() {
           .sort((a, b) => a.beneficiary_name.localeCompare(b.beneficiary_name))
 
         setBeneficiaries(uniqueBeneficiaries)
-        // console.log(`Loaded ${uniqueBeneficiaries.length} unique beneficiaries`)
       }
     } catch (error) {
       console.error("Error fetching beneficiaries from history:", error)
@@ -489,7 +482,6 @@ export default function VoucherPage() {
     const beneficiaryData = beneficiaries.find(b => b.beneficiary_name === name)
 
     if (beneficiaryData) {
-      // console.log("Autofilling data for beneficiary:", name)
 
       // Autofill fields
       if (beneficiaryData.company_name) {
@@ -592,10 +584,7 @@ export default function VoucherPage() {
 
           setNextVoucherNumber(nextVoucher)
 
-          // Fetch all dropdown data from master table with proper sequencing
-
-          // console.log("Starting to fetch all dropdown data...")
-
+          
           await Promise.all([
 
             fetchBankAccountsFromMaster(),
@@ -611,8 +600,6 @@ export default function VoucherPage() {
             fetchBeneficiariesFromHistory(),
 
           ])
-
-          // console.log("All dropdown data fetched successfully")
 
           const currentDate = new Date().toISOString().split("T")[0]
 
@@ -1895,7 +1882,6 @@ export default function VoucherPage() {
                       <Select
                         value={voucherData.bankAcFrom}
                         onValueChange={(value) => {
-                          // console.log("Bank account selected:", value)
                           handleInputChange("bankAcFrom", value)
                         }}
                       >

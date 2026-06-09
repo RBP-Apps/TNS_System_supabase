@@ -513,7 +513,7 @@ export default function AddCreditPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Date of Payment</Label>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Date</Label>
                   <Input
                     type="date"
                     value={formData.dateOfPayment}

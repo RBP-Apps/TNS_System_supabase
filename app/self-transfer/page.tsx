@@ -15,83 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
-const SearchableBeneficiarySelect = ({
-  value,
-  onValueChange,
-  options,
-  onSelect,
-}: {
-  value: string
-  onValueChange: (v: string) => void
-  options: any[]
-  onSelect: (name: string) => void
-}) => {
-  const [open, setOpen] = React.useState(false)
-  const containerRef = React.useRef<HTMLDivElement>(null)
-
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  const filteredOptions = React.useMemo(() => {
-    if (!value) return options
-    return options.filter((opt) =>
-      opt.beneficiary_name.toLowerCase().includes(value.toLowerCase())
-    )
-  }, [value, options])
-
-  return (
-    <div className="relative w-full" ref={containerRef}>
-      <Input
-        value={value}
-        onChange={(e) => {
-          onValueChange(e.target.value)
-          setOpen(true)
-        }}
-        onFocus={() => setOpen(true)}
-        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600 pr-8 w-full"
-        placeholder="Type or select beneficiary"
-        required
-      />
-      <ChevronsUpDown
-        className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50 cursor-pointer"
-        onClick={() => setOpen(!open)}
-      />
-
-      {open && filteredOptions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none">
-          {filteredOptions.map((beneficiary) => (
-            <div
-              key={beneficiary.beneficiary_name}
-              className={cn(
-                "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                value === beneficiary.beneficiary_name && "bg-accent text-accent-foreground"
-              )}
-              onClick={() => {
-                onSelect(beneficiary.beneficiary_name)
-                setOpen(false)
-              }}
-            >
-              <Check
-                className={cn(
-                  "mr-2 h-4 w-4",
-                  value === beneficiary.beneficiary_name ? "opacity-100" : "opacity-0"
-                )}
-              />
-              {beneficiary.beneficiary_name}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 const convertNumberToWords = (num: number): string => {
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
@@ -121,7 +44,6 @@ export default function SelfTransferPage() {
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
-    beneficiaryName: "",
     companyName: "",
     bankAcFrom: "",
     dateOfPayment: new Date().toISOString().split("T")[0],
@@ -129,19 +51,13 @@ export default function SelfTransferPage() {
     amountInWords: "",
     transactionType: "Contra",
     purposeOfPayment: "",
-    project: "",
-    poNumber: "",
     utrNumber: "",
     beneficiaryAccountName: "",
     beneficiaryAccountNumber: "",
     beneficiaryBankName: "",
     beneficiaryBankIFSC: "",
     particulars: "",
-    entryDoneBy: "",
-    checkedBy: "",
     approvedBy: "",
-    vendorNumber: "",
-    vendorEmail: "",
   })
 
   useEffect(() => {
@@ -246,22 +162,6 @@ export default function SelfTransferPage() {
     return allBankAccounts
   }
 
-  const handleBeneficiarySelection = (name: string) => {
-    handleInputChange("beneficiaryName", name)
-    if (!name) return
-
-    const data = beneficiaries.find(b => b.beneficiary_name === name)
-    if (data) {
-      if (data.company_name) handleCompanySelection(data.company_name)
-      if (data.bank_ac_from) {
-        setTimeout(() => handleInputChange("bankAcFrom", data.bank_ac_from), 150)
-      }
-      if (data.beneficiary_ac_name) handleInputChange("beneficiaryAccountName", data.beneficiary_ac_name)
-      if (data.beneficiary_ac_number) handleInputChange("beneficiaryAccountNumber", data.beneficiary_ac_number)
-      if (data.beneficiary_bank_name) handleInputChange("beneficiaryBankName", data.beneficiary_bank_name)
-      if (data.beneficiary_bank_ifsc) handleInputChange("beneficiaryBankIFSC", data.beneficiary_bank_ifsc)
-    }
-  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => {
@@ -316,11 +216,38 @@ export default function SelfTransferPage() {
         currentY += 28
 
         const info = [
-          ["DATE:", formatDate(data.dateOfPayment), "TYPE:", data.transactionType || "", "BANK AC:", data.bankAcFrom || ""],
-          ["PAYER:", { content: data.beneficiaryName || "", colSpan: 3 }, "PROJECT:", data.project || ""],
-          ["PO NO:", data.poNumber || "N/A", "UTR NO:", data.utrNumber || "N/A", "PURPOSE:", data.purposeOfPayment || ""],
-          ["A/C NAME:", data.beneficiaryAccountName || "", "A/C NO:", data.beneficiaryAccountNumber || "", "IFSC:", data.beneficiaryBankIFSC || ""],
-          ["BANK:", { content: data.beneficiaryBankName || "", colSpan: 5 }]
+          [
+            "DATE:",
+            formatDate(data.dateOfPayment),
+            "TYPE:",
+            data.transactionType,
+            "BANK AC:",
+            data.bankAcFrom,
+          ],
+          [
+            "UTR NO:",
+            data.utrNumber,
+            "PURPOSE:",
+            data.purposeOfPayment,
+            "",
+            "",
+          ],
+          [
+            "BANK A/C TO:",
+            data.beneficiaryAccountName,
+            "ACCOUNT NO:",
+            data.beneficiaryAccountNumber,
+            "",
+            "",
+          ],
+          [
+            "BANK NAME:",
+            data.beneficiaryBankName,
+            "IFSC:",
+            data.beneficiaryBankIFSC,
+            "",
+            "",
+          ],
         ]
 
         autoTable(doc, {
@@ -351,9 +278,9 @@ export default function SelfTransferPage() {
 
         currentY += 20
         const sigs = [
-          ["ENTRY BY", "CHECKED BY", "APPROVED BY"],
-          ["", "", ""],
-          [data.entryDoneBy || "", data.checkedBy || "", data.approvedBy || ""]
+          ["APPROVED BY"],
+          [""],
+          [data.approvedBy || ""]
         ]
         autoTable(doc, {
           startY: currentY,
@@ -376,86 +303,110 @@ export default function SelfTransferPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+
     try {
       // 1. Generate PDF
       const pdfBase64 = await generatePDFBlob(formData)
-      const fileName = `SelfTransfer_${Date.now()}.pdf`
+
+      const fileName = `Contra_${Date.now()}.pdf`
+
       const byteCharacters = atob(pdfBase64 as string)
       const byteNumbers = new Array(byteCharacters.length)
-      for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i)
-      const pdfBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' })
 
-      // 2. Upload to Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('vouchers')
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+
+      const pdfBlob = new Blob(
+        [new Uint8Array(byteNumbers)],
+        { type: "application/pdf" }
+      )
+
+      // 2. Upload PDF
+      const { error: uploadError } = await supabase.storage
+        .from("vouchers")
         .upload(fileName, pdfBlob)
+
       if (uploadError) throw uploadError
 
-      const { data: { publicUrl } } = supabase.storage.from('vouchers').getPublicUrl(fileName)
+      const {
+        data: { publicUrl },
+      } = supabase.storage
+        .from("vouchers")
+        .getPublicUrl(fileName)
 
-      // 3. Insert into Database
-      const { error } = await supabase.from("SelfTransfer").insert([
-        {
-          beneficiary_name: formData.beneficiaryName,
-          company_name: formData.companyName,
-          bank_ac_from: formData.bankAcFrom,
-          date_of_payment: formData.dateOfPayment,
-          amount: parseFloat(formData.amount),
-          amount_in_words: formData.amountInWords,
-          transaction_type: formData.transactionType,
-          purpose_of_payment: formData.purposeOfPayment,
-          project: formData.project,
-          po_number: formData.poNumber,
-          utr_number: formData.utrNumber,
-          beneficiary_ac_name: formData.beneficiaryAccountName,
-          beneficiary_ac_number: formData.beneficiaryAccountNumber,
-          beneficiary_bank_name: formData.beneficiaryBankName,
-          beneficiary_bank_ifsc: formData.beneficiaryBankIFSC,
-          particulars: formData.particulars,
-          entry_done_by: formData.entryDoneBy,
-          checked_by: formData.checkedBy,
-          approved_by: formData.approvedBy,
-          pdf_link: publicUrl,
-        },
-      ])
+      // 3. Save Record
+      const payload = {
+        company_name: formData.companyName,
+        bank_ac_from: formData.bankAcFrom,
+        date_of_payment: formData.dateOfPayment,
+
+        purpose: formData.purposeOfPayment,
+        transaction_type: formData.transactionType,
+
+        utr_number: formData.utrNumber,
+
+        bank_ac_to: formData.beneficiaryAccountName,
+        bank_ac_number_to: formData.beneficiaryAccountNumber,
+        bank_name_to: formData.beneficiaryBankName,
+        ifsc_to: formData.beneficiaryBankIFSC,
+
+        particulars: formData.particulars,
+
+        amount: Number(formData.amount),
+        amount_in_words: formData.amountInWords,
+
+        approved_by: formData.approvedBy,
+
+        pdf_link: publicUrl,
+      }
+
+      const { error } = await supabase
+        .from("Contra")
+        .insert([payload])
 
       if (error) throw error
 
       alert("Contra added successfully!")
+
+      // Reset Form
       setFormData({
         beneficiaryName: "",
         companyName: "",
         bankAcFrom: "",
         dateOfPayment: new Date().toISOString().split("T")[0],
+
         amount: "",
         amountInWords: "",
+
         transactionType: "Contra",
         purposeOfPayment: "",
+
         project: "",
         poNumber: "",
+
         utrNumber: "",
+
         beneficiaryAccountName: "",
         beneficiaryAccountNumber: "",
         beneficiaryBankName: "",
         beneficiaryBankIFSC: "",
+
         particulars: "",
+
         entryDoneBy: username,
         checkedBy: "",
         approvedBy: "",
+
         vendorNumber: "",
         vendorEmail: "",
       })
     } catch (error: any) {
       console.error("Error adding Contra:", error)
-      alert("Failed to add record: " + error.message)
+      alert(`Failed to add record: ${error.message}`)
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  const handleLogout = () => {
-    localStorage.clear()
-    router.push("/")
   }
 
   return (
@@ -468,7 +419,7 @@ export default function SelfTransferPage() {
           <CardContent className="p-6">
             <div className="bg-white border-2 border-gray-800 p-4 space-y-6">
 
-           
+
 
               {/* Row 2: Company, Bank, Date */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-gray-400 pb-4">
@@ -537,12 +488,12 @@ export default function SelfTransferPage() {
                 </div>
               </div>
 
-           
+
 
               {/* Row 6: Beneficiary Account Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
                 <div>
-                  <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C To</Label>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Bank A/C To</Label>
                   <Input
                     value={formData.beneficiaryAccountName}
                     onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
@@ -550,7 +501,7 @@ export default function SelfTransferPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-bold text-gray-700 uppercase">Beneficiary A/C Number To</Label>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">Bank A/C Number To</Label>
                   <Input
                     value={formData.beneficiaryAccountNumber}
                     onChange={(e) => handleInputChange("beneficiaryAccountNumber", e.target.value)}
@@ -570,7 +521,7 @@ export default function SelfTransferPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-bold text-gray-700 uppercase">Bank Name To</Label>
+                  <Label className="text-xs font-bold text-gray-700 uppercase">IFSC To</Label>
                   <Input
                     value={formData.beneficiaryBankIFSC}
                     onChange={(e) => handleInputChange("beneficiaryBankIFSC", e.target.value)}

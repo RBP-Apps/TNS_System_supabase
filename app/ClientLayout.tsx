@@ -25,6 +25,23 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [userRole, setUserRole] = useState("")
   const [username, setUsername] = useState("")
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // Load collapsed preference on mount (to avoid hydration mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem("tns_sidebar_collapsed")
+    if (stored !== null) {
+      setIsSidebarCollapsed(stored === "true")
+    }
+  }, [])
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const newValue = !prev
+      localStorage.setItem("tns_sidebar_collapsed", String(newValue))
+      return newValue
+    })
+  }
 
   // Check login status on mount and when pathname changes
   useEffect(() => {
@@ -113,20 +130,50 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex md:w-64 lg:w-72 flex-col fixed inset-y-0 left-0 z-30 bg-slate-900 text-slate-300 border-r border-slate-800 shadow-xl">
+      <aside className={`hidden md:flex flex-col fixed inset-y-0 left-0 z-30 bg-slate-900 text-slate-300 border-r border-slate-800 shadow-xl transition-all duration-300 ease-in-out ${
+        isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
+      }`}>
+        {/* Collapse Toggle Button */}
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-7 z-40 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white p-1 rounded-full shadow-md cursor-pointer transition-colors"
+          title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isSidebarCollapsed ? (
+            <ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          )}
+        </button>
+
         {/* Brand Logo */}
-        <div className="flex items-center space-x-3.5 px-6 py-6 border-b border-slate-800/60 bg-slate-950/40">
-          <div className="bg-gradient-to-tr from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/10">
+        <div className={`flex items-center border-b border-slate-800/60 bg-slate-950/40 px-6 py-6 transition-all duration-300 ${
+          isSidebarCollapsed ? "justify-center" : "space-x-3.5"
+        }`}>
+          <div className="bg-gradient-to-tr from-amber-500 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/10 shrink-0">
             <Building2 className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h2 className="text-sm font-extrabold text-white tracking-widest uppercase">TNS System</h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Payment Portal</p>
-          </div>
+          {!isSidebarCollapsed && (
+            <div className="transition-all duration-300 opacity-100 whitespace-nowrap overflow-hidden">
+              <h2 className="text-sm font-extrabold text-white tracking-widest uppercase">TNS System</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Payment Portal</p>
+            </div>
+          )}
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+        <nav className={`flex-1 py-6 space-y-1.5 overflow-y-auto overflow-x-hidden transition-all duration-300 ${
+          isSidebarCollapsed ? "px-2" : "px-4"
+        }`}>
           {activeItems.map((item) => {
             const isActive = pathname === item.path
             const Icon = item.icon
@@ -134,17 +181,28 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <button
                 key={item.path}
                 onClick={() => router.push(item.path)}
-                className={`flex items-center justify-between w-full px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 group cursor-pointer ${
+                className={`relative flex items-center w-full px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 group cursor-pointer ${
                   isActive 
                     ? `bg-gradient-to-r ${item.color} text-white shadow-lg shadow-orange-500/5` 
                     : "hover:bg-slate-800/60 hover:text-white"
-                }`}
+                } ${isSidebarCollapsed ? "justify-center" : "justify-between"}`}
               >
                 <div className="flex items-center">
-                  <Icon className={`mr-3 h-4 w-4 transition-colors ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
-                  <span>{item.name}</span>
+                  <Icon className={`h-4 w-4 transition-colors shrink-0 ${isSidebarCollapsed ? "" : "mr-3"} ${isActive ? "text-white" : "text-slate-400 group-hover:text-white"}`} />
+                  {!isSidebarCollapsed && (
+                    <span className="transition-all duration-300 opacity-100 whitespace-nowrap overflow-hidden">
+                      {item.name}
+                    </span>
+                  )}
                 </div>
-                {isActive && <ChevronRight className="h-3.5 w-3.5 text-white/80" />}
+                {!isSidebarCollapsed && isActive && <ChevronRight className="h-3.5 w-3.5 text-white/80 shrink-0" />}
+
+                {/* CSS Tooltip on hover when collapsed */}
+                {isSidebarCollapsed && (
+                  <span className="absolute left-full ml-3 px-3 py-2 bg-slate-950 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 border border-slate-800 whitespace-nowrap">
+                    {item.name}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -152,21 +210,36 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
         {/* User Footer Profile & Logout */}
         <div className="p-4 border-t border-slate-800/60 bg-slate-950/20">
-          <div className="flex items-center space-x-3 px-2 py-1 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-500 font-extrabold border border-slate-700 shadow-inner">
+          <div className={`relative flex items-center mb-4 transition-all duration-300 ${
+            isSidebarCollapsed ? "justify-center group cursor-pointer" : "space-x-3 px-2 py-1"
+          }`}>
+            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-500 font-extrabold border border-slate-700 shadow-inner shrink-0">
               {username.charAt(0).toUpperCase()}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-white truncate">{username}</p>
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">{userRole}</p>
-            </div>
+            {!isSidebarCollapsed ? (
+              <div className="min-w-0 flex-1 transition-all duration-300 opacity-100 whitespace-nowrap overflow-hidden">
+                <p className="text-sm font-bold text-white truncate">{username}</p>
+                <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">{userRole}</p>
+              </div>
+            ) : (
+              <span className="absolute left-full ml-3 px-3 py-2 bg-slate-950 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 border border-slate-800 whitespace-nowrap">
+                {username} ({userRole})
+              </span>
+            )}
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-red-400 bg-red-950/10 hover:bg-red-900/20 border border-red-900/30 hover:border-red-900/50 rounded-xl transition-all duration-200 cursor-pointer"
+            className={`relative flex items-center justify-center px-4 py-2.5 text-sm font-bold text-red-400 bg-red-950/10 hover:bg-red-900/20 border border-red-900/30 hover:border-red-900/50 rounded-xl transition-all duration-200 cursor-pointer group ${
+              isSidebarCollapsed ? "w-10 h-10 p-0 mx-auto" : "w-full"
+            }`}
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            <LogOut className={`h-4 w-4 shrink-0 ${isSidebarCollapsed ? "" : "mr-2"}`} />
+            {!isSidebarCollapsed && <span className="whitespace-nowrap overflow-hidden">Logout</span>}
+            {isSidebarCollapsed && (
+              <span className="absolute left-full ml-3 px-3 py-2 bg-slate-950 text-white text-xs font-semibold rounded-lg shadow-xl opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 border border-slate-800 whitespace-nowrap">
+                Logout
+              </span>
+            )}
           </button>
         </div>
       </aside>
@@ -245,7 +318,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:pl-64 lg:pl-72 min-h-screen min-w-0">
+      <div className={`flex-1 flex flex-col min-h-screen min-w-0 transition-all duration-300 ease-in-out ${
+        isSidebarCollapsed ? "md:pl-20" : "md:pl-64 lg:pl-72"
+      }`}>
         {/* Unified Top Header Bar */}
         <header className="sticky top-0 z-20 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-sm">
           <div className="flex items-center space-x-3">

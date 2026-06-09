@@ -180,13 +180,33 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
 
               {/* Other input fields */}
               {[
-                ["Beneficiary Name", "beneficiaryName", editVoucher.recordType !== "Transfer"],
-                ["PO Number", "poNumber", editVoucher.recordType !== "Credit"],
+                [
+                  editVoucher.recordType === "Credit" ? "Payer Name" : "Beneficiary Name",
+                  "beneficiaryName",
+                  editVoucher.recordType !== "Transfer",
+                ],
+                ["PO Number", "poNumber", editVoucher.recordType !== "Credit" && editVoucher.recordType !== "Transfer"],
                 ["UTR Number", "utrNumber", editVoucher.recordType !== "Debit"],
-                ["Beneficiary A/C Name", "beneficiaryAcName", editVoucher.recordType !== "Credit"],
-                ["Beneficiary A/C Number", "beneficiaryAcNumber", editVoucher.recordType !== "Credit"],
-                ["Beneficiary Bank Name", "beneficiaryBankName", editVoucher.recordType !== "Credit"],
-                ["Beneficiary Bank IFSC", "beneficiaryBankIfsc", editVoucher.recordType !== "Credit"],
+                [
+                  editVoucher.recordType === "Transfer" ? "Bank A/C To" : "Beneficiary A/C Name",
+                  "beneficiaryAcName",
+                  editVoucher.recordType !== "Credit",
+                ],
+                [
+                  editVoucher.recordType === "Transfer" ? "Bank A/C Number To" : "Beneficiary A/C Number",
+                  "beneficiaryAcNumber",
+                  editVoucher.recordType !== "Credit",
+                ],
+                [
+                  editVoucher.recordType === "Transfer" ? "Bank Name To" : "Beneficiary Bank Name",
+                  "beneficiaryBankName",
+                  editVoucher.recordType !== "Credit",
+                ],
+                [
+                  editVoucher.recordType === "Transfer" ? "IFSC To" : "Beneficiary Bank IFSC",
+                  "beneficiaryBankIfsc",
+                  editVoucher.recordType !== "Credit",
+                ],
               ]
                 .filter(([,, show]) => show)
                 .map(([label, key]) => (
@@ -257,7 +277,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
-                { label: "Entry Done By", key: "entryDoneBy", isReadOnly: true, show: true },
+                { label: "Entry Done By", key: "entryDoneBy", isReadOnly: true, show: editVoucher.recordType !== "Transfer" },
                 { label: "Checked By", key: "checkedBy", isReadOnly: false, show: editVoucher.recordType !== "Transfer" },
                 { label: "Approved By", key: "approvedBy", isReadOnly: false, show: editVoucher.recordType !== "Credit" },
               ]
