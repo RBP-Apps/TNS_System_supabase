@@ -151,7 +151,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           
           <button
             onClick={toggleSidebar}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg cursor-pointer transition-colors shrink-0"
+           className="p-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer transition-colors shrink-0 shadow-md shadow-purple-500/30"
             title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isSidebarCollapsed ? (
