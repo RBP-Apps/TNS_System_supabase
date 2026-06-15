@@ -448,7 +448,6 @@ export default function VoucherPage() {
       handleInputChange("bankAcFrom", "")
       handleInputChange("transactionType", "Payment")
       handleInputChange("poNumber", "")
-      handleInputChange("utrNumber", "")
       handleInputChange("beneficiaryAccountName", "")
       handleInputChange("beneficiaryAccountNumber", "")
       handleInputChange("beneficiaryBankName", "")

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from "react"
+import React, { useRef, useEffect, useMemo, useState } from "react"
 import {
   TableHeader,
   TableBody,
@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Trash2, FileText } from "lucide-react"
 import { VoucherData } from "@/lib/voucher-exports"
-import { useVirtual } from "@/hooks/useVirtual"
 
 interface VoucherTableProps {
   recordType: "Debit" | "Credit" | "Transfer"
@@ -34,25 +33,27 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
   userRole,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 50
 
-  const { startIndex, endIndex, topSpacerHeight, bottomSpacerHeight } = useVirtual(
-    containerRef,
-    {
-      itemCount: filteredVouchers.length,
-      itemHeight: 52,
-      overscan: 15,
-    }
-  )
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filteredVouchers, recordType])
+
+  const totalPages = Math.ceil(filteredVouchers.length / itemsPerPage)
+
+  const paginatedVouchers = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage
+    return filteredVouchers.slice(startIdx, startIdx + itemsPerPage)
+  }, [filteredVouchers, currentPage])
 
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = 0
     }
-  }, [recordType, filteredVouchers.length])
+  }, [recordType, filteredVouchers.length, currentPage])
 
-  const visibleVouchers = useMemo(() => {
-    return filteredVouchers.slice(startIndex, endIndex + 1)
-  }, [filteredVouchers, startIndex, endIndex])
+  const visibleVouchers = paginatedVouchers
 
   const colSpanVal = useMemo(() => {
     let baseCols = 0
@@ -147,13 +148,8 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {topSpacerHeight > 0 && (
-                <tr>
-                  <td colSpan={colSpanVal} style={{ height: topSpacerHeight, padding: 0, border: 0 }} />
-                </tr>
-              )}
               {visibleVouchers.map((voucher, index) => {
-                const actualIndex = startIndex + index
+                const actualIndex = (currentPage - 1) * itemsPerPage + index
                 return (
                   <TableRow
                     key={voucher.id}
@@ -391,11 +387,6 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                   </TableRow>
                 )
               })}
-              {bottomSpacerHeight > 0 && (
-                <tr>
-                  <td colSpan={colSpanVal} style={{ height: bottomSpacerHeight, padding: 0, border: 0 }} />
-                </tr>
-              )}
               {filteredVouchers.length === 0 && (
                 <TableRow>
                   <TableCell
@@ -411,6 +402,103 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
           </table>
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border border-slate-200 rounded-lg mt-4 shadow-sm">
+          <div className="flex justify-between flex-1 sm:hidden">
+            <Button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              variant="outline"
+              size="sm"
+            >
+              Previous
+            </Button>
+            <Button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              variant="outline"
+              size="sm"
+            >
+              Next
+            </Button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-slate-700">
+                Showing{" "}
+                <span className="font-semibold text-slate-900">
+                  {(currentPage - 1) * itemsPerPage + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-slate-900">
+                  {Math.min(currentPage * itemsPerPage, filteredVouchers.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-slate-900">{filteredVouchers.length}</span>{" "}
+                records
+              </p>
+            </div>
+            <div>
+              <nav
+                className="inline-flex -space-x-px rounded-md gap-1"
+                aria-label="Pagination"
+              >
+                <Button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-md border-slate-200"
+                >
+                  Previous
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((page) => {
+                    return (
+                      page === 1 ||
+                      page === totalPages ||
+                      Math.abs(page - currentPage) <= 1
+                    )
+                  })
+                  .map((page, index, array) => {
+                    const isPrevEllipsis = index > 0 && page - array[index - 1] > 1
+                    return (
+                      <React.Fragment key={page}>
+                        {isPrevEllipsis && (
+                          <span className="inline-flex items-center justify-center px-3 h-9 text-sm font-medium text-slate-400">
+                            ...
+                          </span>
+                        )}
+                        <Button
+                          onClick={() => setCurrentPage(page)}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          className={`min-w-[36px] ${
+                            currentPage === page
+                              ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                              : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                          }`}
+                        >
+                          {page}
+                        </Button>
+                      </React.Fragment>
+                    )
+                  })}
+                <Button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-md border-slate-200"
+                >
+                  Next
+                </Button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
