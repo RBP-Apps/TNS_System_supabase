@@ -55,10 +55,13 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
   }, [filteredVouchers, startIndex, endIndex])
 
   const colSpanVal = useMemo(() => {
-    let baseCols = 11 // S.N. + 10 data columns
-    if (recordType === "Credit") baseCols = 12 // S.N. + 11 data columns
-    else if (recordType === "Transfer") baseCols = 14 // S.N. + 13 data columns
-    return baseCols + (userRole === "admin" ? 3 : 1)
+    let baseCols = 0
+    if (recordType === "Debit") baseCols = 21
+    else if (recordType === "Credit") baseCols = 14
+    else if (recordType === "Transfer") baseCols = 15
+
+    const adminExtra = userRole === "admin" ? 2 : 0
+    return 1 + 1 + adminExtra + baseCols // S.N. + View + adminExtra + baseCols
   }, [recordType, userRole])
 
   return (
@@ -72,17 +75,32 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
             <TableHeader className="sticky top-0 bg-slate-100 z-10">
               <TableRow>
                 <TableHead className="font-semibold text-xs lg:text-sm">S.N.</TableHead>
+                <TableHead className="font-semibold text-center text-xs lg:text-sm">View</TableHead>
+                {userRole === "admin" && (
+                  <TableHead className="font-semibold text-center text-xs lg:text-sm">Edit</TableHead>
+                )}
                 {recordType === "Debit" && (
                   <>
                     <TableHead className="font-semibold text-xs lg:text-sm">Voucher No.</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Created Date</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Voucher Date</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Company</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Bank AC From</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Beneficiary Name</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">PO Number</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">UTR Number</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Beneficiary A/C Name</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Beneficiary A/C Number</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Beneficiary Bank Name</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Beneficiary Bank IFSC</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Purpose</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Project</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Particulars</TableHead>
                     <TableHead className="text-right font-semibold text-xs lg:text-sm">Amount</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Transaction Type</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Entry Done By</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Checked By</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Approved By</TableHead>
                     <TableHead className="font-semibold text-center text-xs lg:text-sm">Name</TableHead>
                   </>
                 )}
@@ -97,8 +115,11 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                     <TableHead className="font-semibold text-xs lg:text-sm">Purpose</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Project</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">UTR Number</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Particulars</TableHead>
                     <TableHead className="text-right font-semibold text-xs lg:text-sm">Amount</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Transaction Type</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Entry Done By</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Checked By</TableHead>
                   </>
                 )}
                 {recordType === "Transfer" && (
@@ -114,13 +135,11 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                     <TableHead className="font-semibold text-xs lg:text-sm">IFSC To</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Purpose</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">UTR Number</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Particulars</TableHead>
                     <TableHead className="text-right font-semibold text-xs lg:text-sm">Amount</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Transaction Type</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Approved By</TableHead>
                   </>
-                )}
-                <TableHead className="font-semibold text-center text-xs lg:text-sm">View</TableHead>
-                {userRole === "admin" && (
-                  <TableHead className="font-semibold text-center text-xs lg:text-sm">Edit</TableHead>
                 )}
                 {userRole === "admin" && (
                   <TableHead className="font-semibold text-center text-xs lg:text-sm">Delete</TableHead>
@@ -143,6 +162,41 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                     <TableCell className="text-xs lg:text-sm font-medium text-slate-500">
                       {actualIndex + 1}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center space-x-1 lg:space-x-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => downloadPDF(voucher)}
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200 p-1 lg:p-2"
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    {userRole === "admin" && (
+                      <TableCell>
+                        <div className="flex justify-center space-x-1 lg:space-x-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditModal(voucher)}
+                            className="bg-green-50 hover:bg-green-100 text-green-600 border-green-200 p-1 lg:p-2"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-3 w-3"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                     {recordType === "Debit" && (
                       <>
                         <TableCell className="font-medium text-blue-600 text-xs lg:text-sm">
@@ -154,25 +208,58 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                         <TableCell className="text-xs lg:text-sm">
                           {new Date(voucher.dateOfPaymentProcess).toLocaleDateString("en-IN")}
                         </TableCell>
-                        <TableCell className="max-w-[100px] lg:max-w-[150px] truncate">
-                          <Badge variant="outline" className="text-xs">
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal">
+                          <Badge variant="outline" className="text-xs whitespace-normal text-left">
                             {voucher.companyName}
                           </Badge>
                         </TableCell>
-                        <TableCell className="max-w-[80px] lg:max-w-[120px] truncate text-xs lg:text-sm">
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
+                          {voucher.bankAcFrom}
+                        </TableCell>
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
                           {voucher.beneficiaryName}
                         </TableCell>
-                        <TableCell className="max-w-[100px] lg:max-w-[150px] truncate text-xs lg:text-sm">
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.poNumber}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.utrNumber}
+                        </TableCell>
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
+                          {voucher.beneficiaryAcName}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.beneficiaryAcNumber}
+                        </TableCell>
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
+                          {voucher.beneficiaryBankName}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.beneficiaryBankIfsc}
+                        </TableCell>
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
                           {voucher.purposeOfPayment}
                         </TableCell>
-                        <TableCell className="max-w-[100px] lg:max-w-[150px] truncate text-xs lg:text-sm">
+                        <TableCell className="min-w-[100px] max-w-[180px] break-words whitespace-normal text-xs lg:text-sm">
                           {voucher.project}
+                        </TableCell>
+                        <TableCell className="min-w-[150px] max-w-[250px] break-words whitespace-normal text-xs lg:text-sm">
+                          {voucher.particulars}
                         </TableCell>
                         <TableCell className="text-right font-bold text-green-600 text-xs lg:text-sm">
                           ₹{Number.parseFloat(voucher.amount).toLocaleString("en-IN")}
                         </TableCell>
                         <TableCell className="text-xs lg:text-sm">
                           {voucher.transactionType}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.entryDoneBy}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.checkedBy}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.approvedBy}
                         </TableCell>
                         <TableCell className="text-center text-xs lg:text-sm">
                           {voucher.name}
@@ -199,20 +286,29 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                         <TableCell className="text-xs lg:text-sm">
                           {voucher.bankAcFrom}
                         </TableCell>
-                        <TableCell className="text-xs lg:text-sm max-w-[150px] truncate">
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
                           {voucher.purposeOfPayment}
                         </TableCell>
-                        <TableCell className="text-xs lg:text-sm max-w-[150px] truncate">
+                        <TableCell className="min-w-[100px] max-w-[180px] break-words whitespace-normal text-xs lg:text-sm">
                           {voucher.project}
                         </TableCell>
                         <TableCell className="text-xs lg:text-sm">
                           {voucher.utrNumber}
+                        </TableCell>
+                        <TableCell className="min-w-[150px] max-w-[250px] break-words whitespace-normal text-xs lg:text-sm">
+                          {voucher.particulars}
                         </TableCell>
                         <TableCell className="text-right font-bold text-green-600 text-xs lg:text-sm">
                           ₹{Number.parseFloat(voucher.amount).toLocaleString("en-IN")}
                         </TableCell>
                         <TableCell className="text-xs lg:text-sm font-medium text-orange-600">
                           {voucher.transactionType}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.entryDoneBy}
+                        </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.checkedBy}
                         </TableCell>
                       </>
                     )}
@@ -245,11 +341,14 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                         <TableCell className="text-xs lg:text-sm">
                           {voucher.beneficiaryBankIfsc}
                         </TableCell>
-                        <TableCell className="text-xs lg:text-sm max-w-[150px] truncate">
+                        <TableCell className="min-w-[120px] max-w-[200px] break-words whitespace-normal text-xs lg:text-sm">
                           {voucher.purposeOfPayment}
                         </TableCell>
                         <TableCell className="text-xs lg:text-sm">
                           {voucher.utrNumber}
+                        </TableCell>
+                        <TableCell className="min-w-[150px] max-w-[250px] break-words whitespace-normal text-xs lg:text-sm">
+                          {voucher.particulars}
                         </TableCell>
                         <TableCell className="text-right font-bold text-green-600 text-xs lg:text-sm">
                           ₹{Number.parseFloat(voucher.amount).toLocaleString("en-IN")}
@@ -257,73 +356,41 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                         <TableCell className="text-xs lg:text-sm font-medium text-teal-600">
                           {voucher.transactionType}
                         </TableCell>
+                        <TableCell className="text-xs lg:text-sm">
+                          {voucher.approvedBy}
+                        </TableCell>
                       </>
                     )}
-                  <TableCell>
-                    <div className="flex justify-center space-x-1 lg:space-x-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => downloadPDF(voucher)}
-                        className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200 p-1 lg:p-2"
-                      >
-                        <Download className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  {userRole === "admin" && (
-                    <TableCell>
-                      <div className="flex justify-center space-x-1 lg:space-x-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEditModal(voucher)}
-                          className="bg-green-50 hover:bg-green-100 text-green-600 border-green-200 p-1 lg:p-2"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-3 w-3"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
+                    {userRole.toLowerCase() === "admin" && (
+                      <TableCell>
+                        <div className="flex justify-center space-x-1 lg:space-x-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                await deleteVoucher(voucher.id)
+                              } catch (error) {
+                                console.error("Delete failed:", error)
+                              }
+                            }}
+                            disabled={loading || deletingVoucherId === voucher.id}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200 p-1 lg:p-2 transition-colors"
                           >
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                          </svg>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
-                  {userRole.toLowerCase() === "admin" && (
-                    <TableCell>
-                      <div className="flex justify-center space-x-1 lg:space-x-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            try {
-                              await deleteVoucher(voucher.id)
-                            } catch (error) {
-                              console.error("Delete failed:", error)
-                            }
-                          }}
-                          disabled={loading || deletingVoucherId === voucher.id}
-                          className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200 p-1 lg:p-2 transition-colors"
-                        >
-                          {deletingVoucherId === voucher.id ? (
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                          )}
-                          <span className="sr-only">Delete voucher</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              )
-            })}
+                            {deletingVoucherId === voucher.id ? (
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            )}
+                            <span className="sr-only">Delete voucher</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                )
+              })}
               {bottomSpacerHeight > 0 && (
                 <tr>
                   <td colSpan={colSpanVal} style={{ height: bottomSpacerHeight, padding: 0, border: 0 }} />

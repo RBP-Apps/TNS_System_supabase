@@ -52,8 +52,15 @@ export function useVirtual(
   }, [containerRef])
 
   const { startIndex, endIndex, topSpacerHeight, bottomSpacerHeight } = useMemo(() => {
-    const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
-    const end = Math.min(itemCount - 1, Math.floor((scrollTop + containerHeight) / itemHeight) + overscan)
+    const visibleItemsCount = Math.ceil(containerHeight / itemHeight)
+    
+    // Cap start index to avoid collapsing near the bottom due to dynamic height mismatch
+    const targetStart = Math.floor(scrollTop / itemHeight) - overscan
+    const maxStart = Math.max(0, itemCount - visibleItemsCount - overscan)
+    const start = Math.max(0, Math.min(maxStart, targetStart))
+    
+    // Ensure we always render a full viewport-worth of items plus overscan
+    const end = Math.min(itemCount - 1, start + visibleItemsCount + (overscan * 2))
 
     const topSpacer = start * itemHeight
     const bottomSpacer = Math.max(0, (itemCount - 1 - end) * itemHeight)

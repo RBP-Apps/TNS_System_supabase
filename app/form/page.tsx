@@ -156,7 +156,6 @@ export default function FormPage() {
           company_name: submissionData.companyName,
           date_of_payment: submissionData.dateOfPayment || null,
           purpose_of_payment: submissionData.purposeOfPayment,
-          transaction_type: submissionData.transactionType,
           project: submissionData.project,
           beneficiary_name: submissionData.beneficiaryName,
           po_number: submissionData.poNumber,

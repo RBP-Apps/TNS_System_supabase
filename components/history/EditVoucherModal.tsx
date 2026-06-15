@@ -68,6 +68,19 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
 }) => {
   if (!isOpen || !editVoucher) return null
 
+  // Dynamically ensure that current voucher values are included in dropdown options
+  const companyNames = Array.from(
+    new Set([...(masterData?.companyNames || []), editVoucher.companyName].filter(Boolean))
+  ).sort()
+
+  const bankAccounts = Array.from(
+    new Set([...(masterData?.bankAccounts || []), editVoucher.bankAcFrom].filter(Boolean))
+  ).sort()
+
+  const projects = Array.from(
+    new Set([...(masterData?.projects || []), editVoucher.project].filter(Boolean))
+  ).sort()
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-all duration-300">
@@ -102,7 +115,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                     <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Company"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {masterData.companyNames.map((company) => (
+                    {companyNames.map((company) => (
                       <SelectItem key={company} value={company}>
                         {company}
                       </SelectItem>
@@ -123,7 +136,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                     <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Bank Account"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {masterData.bankAccounts.map((bank) => (
+                    {bankAccounts.map((bank) => (
                       <SelectItem key={bank} value={bank}>
                         {bank}
                       </SelectItem>
@@ -168,7 +181,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                       <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Project"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {masterData.projects.map((proj) => (
+                      {projects.map((proj) => (
                         <SelectItem key={proj} value={proj}>
                           {proj}
                         </SelectItem>
@@ -186,7 +199,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                   editVoucher.recordType !== "Transfer",
                 ],
                 ["PO Number", "poNumber", editVoucher.recordType !== "Credit" && editVoucher.recordType !== "Transfer"],
-                ["UTR Number", "utrNumber", editVoucher.recordType !== "Debit"],
+                ["UTR Number", "utrNumber", true],
                 [
                   editVoucher.recordType === "Transfer" ? "Bank A/C To" : "Beneficiary A/C Name",
                   "beneficiaryAcName",
@@ -220,27 +233,14 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                   </div>
                 ))}
 
-              {/* Transaction Type Dropdown */}
+              {/* Transaction Type - Read Only Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
-                <Select
-                  value={editVoucher.transactionType}
-                  onValueChange={(value) =>
-                    setEditVoucher((prev) => (prev ? { ...prev, transactionType: value } : null))
-                  }
-                  disabled={loadingMasterData}
-                >
-                  <SelectTrigger className="w-full border border-gray-300 rounded-lg px-3 py-2 h-auto">
-                    <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Transaction Type"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {masterData.transactionTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={editVoucher.transactionType || ""}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
+                  readOnly
+                />
               </div>
             </div>
 

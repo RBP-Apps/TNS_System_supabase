@@ -229,7 +229,7 @@ export const useHistoryData = () => {
         COLUMNS = [
           "id", "voucher_no", "created_date", "date_of_payment", "company_name",
           "beneficiary_name", "purpose_of_payment", "project", "amount", "transaction_type",
-          "name", "pdf_link", "bank_ac_from", "po_number", "beneficiary_ac_name",
+          "name", "pdf_link", "bank_ac_from", "po_number", "utr_number", "beneficiary_ac_name",
           "beneficiary_ac_number", "beneficiary_bank_name", "beneficiary_bank_ifsc",
           "particulars", "amount_in_words", "entry_done_by", "checked_by", "approved_by"
         ].join(",")

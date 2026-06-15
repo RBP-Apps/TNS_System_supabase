@@ -117,6 +117,7 @@ export default function AddCreditPage() {
   const [bankAccounts, setBankAccounts] = useState<string[]>([])
   const [filteredBankAccounts, setFilteredBankAccounts] = useState<string[]>([])
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
+  const [creditPayerNames, setCreditPayerNames] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     beneficiaryName: "",
@@ -160,7 +161,8 @@ export default function AddCreditPage() {
       await Promise.all([
         fetchCompanyNames(),
         fetchBankAccounts(),
-        fetchBeneficiaries()
+        fetchBeneficiaries(),
+        fetchCreditPayers()
       ])
     } catch (error) {
       console.error("Error fetching initial data:", error)
@@ -188,7 +190,7 @@ export default function AddCreditPage() {
   const fetchBeneficiaries = async () => {
     const { data, error } = await supabase
       .from('History')
-      .select('beneficiary_name, company_name, bank_ac_from, transaction_type, beneficiary_ac_name, beneficiary_ac_number, beneficiary_bank_name, beneficiary_bank_ifsc')
+      .select('beneficiary_name, company_name, bank_ac_from, beneficiary_ac_name, beneficiary_ac_number, beneficiary_bank_name, beneficiary_bank_ifsc')
       .order('created_date', { ascending: false })
 
     if (!error && data) {
@@ -199,6 +201,16 @@ export default function AddCreditPage() {
         }
       })
       setBeneficiaries(Array.from(unique.values()))
+    }
+  }
+
+  const fetchCreditPayers = async () => {
+    const { data, error } = await supabase
+      .from('Credit')
+      .select('beneficiary_name')
+    if (!error && data) {
+      const uniquePayers = [...new Set(data.map(i => i.beneficiary_name).filter(Boolean))]
+      setCreditPayerNames(uniquePayers.map(name => ({ beneficiary_name: name })))
     }
   }
 
@@ -284,6 +296,11 @@ export default function AddCreditPage() {
         purposeOfPayment: formData.purposeOfPayment,
         transactionType: formData.transactionType,
         project: formData.project,
+        poNumber: "",
+        beneficiaryAcName: "",
+        beneficiaryAcNumber: "",
+        beneficiaryBankName: "",
+        beneficiaryBankIfsc: "",
         particulars: formData.particulars,
         entryDoneBy: formData.entryDoneBy,
         checkedBy: formData.checkedBy,
@@ -312,8 +329,8 @@ export default function AddCreditPage() {
           date_of_payment: formData.dateOfPayment,
           amount: parseFloat(formData.amount),
           amount_in_words: formData.amountInWords,
-          transaction_type: formData.transactionType,
           purpose_of_payment: formData.purposeOfPayment,
+          transaction_type: formData.transactionType || "Receipt",
           project: formData.project,
           utr_number: formData.utrNumber,
           particulars: formData.particulars,
@@ -326,6 +343,7 @@ export default function AddCreditPage() {
       if (error) throw error
 
       alert("Credit record added successfully!")
+      fetchCreditPayers()
       setFormData({
         beneficiaryName: "",
         companyName: "",
@@ -375,22 +393,16 @@ export default function AddCreditPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="md:col-span-3">
-  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-    Payer Name
-  </Label>
-
-  <Input
-    type="text"
-    placeholder="Enter Payer Name"
-    value={formData.beneficiaryName}
-    onChange={(e) =>
-      setFormData((prev) => ({
-        ...prev,
-        beneficiaryName: e.target.value,
-      }))
-    }
-  />
-</div>
+                  <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                    Payer Name
+                  </Label>
+                  <SearchableBeneficiarySelect
+                    value={formData.beneficiaryName}
+                    onValueChange={(val) => handleInputChange("beneficiaryName", val)}
+                    options={creditPayerNames}
+                    onSelect={(name) => handleBeneficiarySelection(name)}
+                  />
+                </div>
 
                 <div>
                   <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Company Name</Label>

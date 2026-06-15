@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, amount, utr, date, company } = await req.json()
+    const { to, amount, utr, date, company, beneficiaryName } = await req.json()
     
     const token = Deno.env.get("WHATSAPP_TOKEN")
     const phone_number_id = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID")
@@ -43,10 +43,11 @@ serve(async (req) => {
               {
                 type: "body",
                 parameters: [
-                  { type: "text", text: amount },  // {{1}}
-                  { type: "text", text: utr },     // {{2}}
-                  { type: "text", text: date },    // {{3}}
-                  { type: "text", text: company }  // {{4}}
+                  { type: "text", text: beneficiaryName || "Customer" }, // {{1}}
+                  { type: "text", text: amount },                        // {{2}}
+                  { type: "text", text: utr },                           // {{3}}
+                  { type: "text", text: date },                          // {{4}}
+                  { type: "text", text: company }                        // {{5}}
                 ]
               }
             ]

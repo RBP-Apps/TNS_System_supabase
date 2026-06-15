@@ -193,16 +193,10 @@ export default function VoucherPage() {
 
     const fetchTransactionTypesFromMaster = async () => {
         try {
-            
-            const { data, error } = await supabase.from('master').select('transaction_type')
-            if (error) throw error
-            
-            if (data) {
-                const uniqueTransactionTypes = [...new Set(data.map(item => item.transaction_type).filter(Boolean))]
-                setTransactionTypes(uniqueTransactionTypes)
-            }
+            // Avoid database error since transaction_type column doesn't exist in master table
+            setTransactionTypes(["Payment"])
         } catch (error) {
-            console.error("Error fetching transaction types from master:", error)
+            console.error("Error setting transaction types:", error)
         }
     }
 

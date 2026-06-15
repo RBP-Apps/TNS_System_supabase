@@ -158,6 +158,8 @@ export default function VoucherPage() {
 
   const [bankAccounts, setBankAccounts] = useState([])
 
+  const [masterBankMappings, setMasterBankMappings] = useState<any[]>([])
+
   const [companyNames, setCompanyNames] = useState<string[]>([]) // New state for company names
 
   const [transactionTypes, setTransactionTypes] = useState([]) // New state for transaction types
@@ -167,6 +169,10 @@ export default function VoucherPage() {
   const [filteredBankAccounts, setFilteredBankAccounts] = useState<any[]>([])
 
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
+
+  const [allBeneficiaryRecords, setAllBeneficiaryRecords] = useState<any[]>([])
+
+  const [availableBeneficiaryBanks, setAvailableBeneficiaryBanks] = useState<any[]>([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -233,135 +239,88 @@ export default function VoucherPage() {
   // Replace the existing fetch functions with these improved versions:
 
   const handleCompanySelection = (value: string) => {
-
-
     handleInputChange("companyName", value)
 
     // Add a small delay to ensure state is updated
-
     setTimeout(() => {
-
       const filtered = filterBankAccountsByCompany(value, bankAccounts)
-
-
       setFilteredBankAccounts(filtered)
 
       // Reset bank account selection if current selection is not in filtered list
-
       if (voucherData.bankAcFrom && !filtered.includes(voucherData.bankAcFrom)) {
-
-
         handleInputChange("bankAcFrom", "")
-
       }
-
     }, 100)
-
   }
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: any[]) => {
-
     if (!selectedCompany || !allBankAccounts.length) {
-
-
       return allBankAccounts
-
     }
 
+    // Try exact database match first
+    const exactMatches = masterBankMappings
+      .filter(item => 
+        item.company_name && 
+        item.company_name.trim().toLowerCase() === selectedCompany.trim().toLowerCase()
+      )
+      .map(item => item.bank_ac_from)
+      .filter(Boolean)
 
+    if (exactMatches.length > 0) {
+      return [...new Set(exactMatches)]
+    }
+
+    // Fallback: Keyword-based matching
     const companyKeywords = selectedCompany.split(' ').filter(word => {
-
       const upperWord = word.toUpperCase()
-
       const isValidKeyword = word.length > 2 &&
-
         !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY', '(INDIA)'].includes(upperWord)
-
     
-
       return isValidKeyword
-
     })
 
-
+    if (companyKeywords.length === 0) {
+      return allBankAccounts
+    }
 
     const strategies = [
-
-
+      // Strategy 1: All keywords must be present (strict)
       (account: string) => {
-
         const upperAccount = account.toUpperCase()
-
         const allMatch = companyKeywords.every(keyword =>
-
           upperAccount.includes(keyword.toUpperCase())
-
         )
-
-
         return allMatch
-
       },
-
       // Strategy 2: At least 2 keywords must be present (moderate)
-
       (account: string) => {
-
         const upperAccount = account.toUpperCase()
-
         const matchCount = companyKeywords.filter(keyword =>
-
           upperAccount.includes(keyword.toUpperCase())
-
         ).length
-
         const matches = matchCount >= Math.min(2, companyKeywords.length)
-
-    
         return matches
-
       },
-
       // Strategy 3: At least 1 keyword must be present (loose)
-
       (account: string) => {
-
         const upperAccount = account.toUpperCase()
-
         const anyMatch = companyKeywords.some(keyword =>
-
           upperAccount.includes(keyword.toUpperCase())
-
         )
-
-
         return anyMatch
-
       }
-
     ]
 
     // Try strategies in order of preference
-
     for (let i = 0; i < strategies.length; i++) {
-
-
       const filtered = allBankAccounts.filter(strategies[i])
-
-
       if (filtered.length > 0) {
-
-
         return filtered
-
       }
-
-
     }
 
-
     return allBankAccounts
-
   }
 
   const fetchCompanyNamesFromMaster = async () => {
@@ -380,10 +339,11 @@ export default function VoucherPage() {
 
   const fetchBankAccountsFromMaster = async () => {
     try {
-      const { data, error } = await supabase.from('master').select('bank_ac_from')
+      const { data, error } = await supabase.from('master').select('company_name, bank_ac_from')
       if (error) throw error
 
       if (data) {
+        setMasterBankMappings(data)
         const uniqueBankAccounts = [...new Set(data.map(item => item.bank_ac_from).filter(Boolean))]
         setBankAccounts(uniqueBankAccounts)
         setFilteredBankAccounts(uniqueBankAccounts)
@@ -395,15 +355,10 @@ export default function VoucherPage() {
 
   const fetchTransactionTypesFromMaster = async () => {
     try {
-      const { data, error } = await supabase.from('master').select('transaction_type')
-      if (error) throw error
-
-      if (data) {
-        const uniqueTransactionTypes = [...new Set(data.map(item => item.transaction_type).filter(Boolean))]
-        setTransactionTypes(uniqueTransactionTypes)
-      }
+      // Avoid database error since transaction_type column doesn't exist in master table
+      setTransactionTypes(["Payment"])
     } catch (error) {
-      console.error("Error fetching transaction types from master:", error)
+      console.error("Error setting transaction types:", error)
     }
   }
 
@@ -423,31 +378,55 @@ export default function VoucherPage() {
 
   const fetchBeneficiariesFromHistory = async () => {
     try {
-
-    
       const { data, error } = await supabase
-        .from('History')
+        .from('tns_master')
         .select(`
-          beneficiary_name, 
-          company_name, 
-          bank_ac_from, 
-          transaction_type, 
-          beneficiary_ac_name, 
-          beneficiary_ac_number, 
-          beneficiary_bank_name, 
+          beneficiary_name,
+          beneficiary_account_number,
+          beneficiary_bank_name,
           beneficiary_bank_ifsc,
-          created_date
+          company_name,
+          whatsapp_no,
+          email_id,
+          created_at
         `)
-        .order('created_date', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
       if (data) {
-        // Use a Map to keep only the latest record for each beneficiary_name
+        // Save all records (including duplicates for multiple bank accounts)
+        const mappedRecords = data.map(item => ({
+          beneficiary_name: item.beneficiary_name,
+          company_name: item.company_name || '',
+          beneficiary_ac_name: item.beneficiary_name,
+          beneficiary_ac_number: item.beneficiary_account_number,
+          beneficiary_bank_name: item.beneficiary_bank_name,
+          beneficiary_bank_ifsc: item.beneficiary_bank_ifsc,
+          vendorNumber: item.whatsapp_no || '',
+          vendorEmail: item.email_id || ''
+        }))
+        setAllBeneficiaryRecords(mappedRecords)
+
+        // Use a Map to keep only the latest record for each beneficiary_name in dropdown options
         const uniqueBeneficiariesMap = new Map()
         data.forEach(item => {
-          if (item.beneficiary_name && !uniqueBeneficiariesMap.has(item.beneficiary_name)) {
-            uniqueBeneficiariesMap.set(item.beneficiary_name, item)
+          if (item.beneficiary_name) {
+            const key = item.beneficiary_name.trim().toLowerCase()
+            if (!uniqueBeneficiariesMap.has(key)) {
+              uniqueBeneficiariesMap.set(key, {
+                beneficiary_name: item.beneficiary_name,
+                company_name: item.company_name || '',
+                bank_ac_from: '',
+                transaction_type: 'Payment',
+                beneficiary_ac_name: item.beneficiary_name, // Map name to ac_name
+                beneficiary_ac_number: item.beneficiary_account_number,
+                beneficiary_bank_name: item.beneficiary_bank_name,
+                beneficiary_bank_ifsc: item.beneficiary_bank_ifsc,
+                vendorNumber: item.whatsapp_no || '',
+                vendorEmail: item.email_id || ''
+              })
+            }
           }
         })
 
@@ -457,12 +436,11 @@ export default function VoucherPage() {
         setBeneficiaries(uniqueBeneficiaries)
       }
     } catch (error) {
-      console.error("Error fetching beneficiaries from history:", error)
+      console.error("Error fetching beneficiaries from tns_master:", error)
     }
   }
 
   const handleBeneficiarySelection = (name: string) => {
-
     handleInputChange("beneficiaryName", name)
 
     if (!name) {
@@ -475,40 +453,79 @@ export default function VoucherPage() {
       handleInputChange("beneficiaryAccountNumber", "")
       handleInputChange("beneficiaryBankName", "")
       handleInputChange("beneficiaryBankIFSC", "")
+      handleInputChange("vendorNumber", "")
+      handleInputChange("vendorEmail", "")
+      setAvailableBeneficiaryBanks([])
       return
     }
 
-    // Find the beneficiary data for autofill
-    const beneficiaryData = beneficiaries.find(b => b.beneficiary_name === name)
+    // Find all matching beneficiary records (could be multiple banks)
+    const matchingRecords = allBeneficiaryRecords.filter(
+      b => b.beneficiary_name.trim().toLowerCase() === name.trim().toLowerCase()
+    )
 
-    if (beneficiaryData) {
+    // Set available banks for this beneficiary
+    setAvailableBeneficiaryBanks(matchingRecords)
+
+    if (matchingRecords.length > 0) {
+      const firstRecord = matchingRecords[0]
 
       // Autofill fields
-      if (beneficiaryData.company_name) {
-        handleCompanySelection(beneficiaryData.company_name)
+      if (firstRecord.company_name) {
+        handleCompanySelection(firstRecord.company_name)
       }
 
-      if (beneficiaryData.bank_ac_from) {
-        // Use a small delay to ensure this isn't overwritten by handleCompanySelection's reset logic
-        setTimeout(() => {
-          handleInputChange("bankAcFrom", beneficiaryData.bank_ac_from)
-        }, 150)
+      if (firstRecord.beneficiary_ac_name) {
+        handleInputChange("beneficiaryAccountName", firstRecord.beneficiary_ac_name)
       }
 
-      if (beneficiaryData.beneficiary_ac_name) {
-        handleInputChange("beneficiaryAccountName", beneficiaryData.beneficiary_ac_name)
+      if (firstRecord.vendorNumber) {
+        handleInputChange("vendorNumber", firstRecord.vendorNumber)
+      } else {
+        handleInputChange("vendorNumber", "")
       }
 
-      if (beneficiaryData.beneficiary_ac_number) {
-        handleInputChange("beneficiaryAccountNumber", beneficiaryData.beneficiary_ac_number)
+      if (firstRecord.vendorEmail) {
+        handleInputChange("vendorEmail", firstRecord.vendorEmail)
+      } else {
+        handleInputChange("vendorEmail", "")
       }
 
-      if (beneficiaryData.beneficiary_bank_name) {
-        handleInputChange("beneficiaryBankName", beneficiaryData.beneficiary_bank_name)
+      // If only one bank record, autofill bank details immediately
+      if (matchingRecords.length === 1) {
+        handleInputChange("beneficiaryBankName", firstRecord.beneficiary_bank_name)
+        handleInputChange("beneficiaryAccountNumber", firstRecord.beneficiary_ac_number)
+        handleInputChange("beneficiaryBankIFSC", firstRecord.beneficiary_bank_ifsc)
+      } else {
+        // If multiple bank records, clear/reset the bank-specific fields so user must select one
+        handleInputChange("beneficiaryBankName", "")
+        handleInputChange("beneficiaryAccountNumber", "")
+        handleInputChange("beneficiaryBankIFSC", "")
       }
+    }
+  }
 
-      if (beneficiaryData.beneficiary_bank_ifsc) {
-        handleInputChange("beneficiaryBankIFSC", beneficiaryData.beneficiary_bank_ifsc)
+  const handleBeneficiaryBankSelection = (bankNameWithAc: string) => {
+    // Find the record matching the bank name and account number combo to avoid duplicates in same bank
+    const record = availableBeneficiaryBanks.find(
+      b => `${b.beneficiary_bank_name} (A/C: ${b.beneficiary_ac_number})` === bankNameWithAc
+    )
+
+    if (record) {
+      handleInputChange("beneficiaryBankName", record.beneficiary_bank_name)
+      handleInputChange("beneficiaryAccountNumber", record.beneficiary_ac_number)
+      handleInputChange("beneficiaryBankIFSC", record.beneficiary_bank_ifsc)
+    } else {
+      // Allow fallback if it's just raw bankName
+      const simpleRecord = availableBeneficiaryBanks.find(
+        b => b.beneficiary_bank_name === bankNameWithAc
+      )
+      if (simpleRecord) {
+        handleInputChange("beneficiaryBankName", simpleRecord.beneficiary_bank_name)
+        handleInputChange("beneficiaryAccountNumber", simpleRecord.beneficiary_ac_number)
+        handleInputChange("beneficiaryBankIFSC", simpleRecord.beneficiary_bank_ifsc)
+      } else {
+        handleInputChange("beneficiaryBankName", bankNameWithAc)
       }
     }
   }
@@ -638,19 +655,7 @@ export default function VoucherPage() {
   }, [router])
 
 
-  const handleLogout = () => {
 
-    localStorage.removeItem("tns_logged_in")
-
-    localStorage.removeItem("tns_username")
-
-    localStorage.removeItem("tns_user_role")
-
-    localStorage.removeItem("tns_user_id")
-
-    router.push("/")
-
-  }
 
   const handleInputChange = (field: keyof VoucherData, value: string) => {
 
@@ -1637,7 +1642,7 @@ export default function VoucherPage() {
         const shortCompanyName = extractFirstTwoWords(finalSubmissionData.companyName)
         const formattedDate = new Date(finalSubmissionData.dateOfPayment).toLocaleDateString("en-IN")
 
-        const messageContent = `An amount of rupees ${finalSubmissionData.amount} has been transfered to account having ${finalSubmissionData.utrNumber} and ${formattedDate} from ${shortCompanyName}`
+        const messageContent = `An amount of rupees ${finalSubmissionData.amount} has been transfered to account having ${finalSubmissionData.utrNumber} and ${formattedDate} from ${finalSubmissionData.companyName}`
 
         // WhatsApp Integration via Edge Function
         const rawPhone = finalSubmissionData.vendorNumber.replace(/\D/g, '')
@@ -1646,10 +1651,11 @@ export default function VoucherPage() {
         await supabase.functions.invoke('whatsapp-notification', {
           body: {
             to: vendorPhone,
+            beneficiaryName: finalSubmissionData.beneficiaryName,
             amount: finalSubmissionData.amount,
             utr: finalSubmissionData.utrNumber,
             date: formattedDate,
-            company: shortCompanyName
+            company: finalSubmissionData.companyName
           }
         })
 
@@ -1662,7 +1668,7 @@ export default function VoucherPage() {
               amount: finalSubmissionData.amount,
               utr_number: finalSubmissionData.utrNumber,
               dated: formattedDate,
-              company_name: shortCompanyName,
+              company_name: finalSubmissionData.companyName,
               to_email: finalSubmissionData.vendorEmail,
               message: messageContent
             },
@@ -1812,13 +1818,36 @@ export default function VoucherPage() {
 
                     <div className="sm:col-span-8">
 
-                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY NAME (PAYER)</Label>
-                      <SearchableBeneficiarySelect
-                        value={voucherData.beneficiaryName}
-                        onValueChange={(val) => handleBeneficiarySelection(val)}
-                        options={beneficiaries}
-                        onSelect={handleBeneficiarySelection}
-                      />
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Company Name</Label>
+                      <Select
+                        value={voucherData.companyName}
+                        onValueChange={(val) => {
+                          // Clear beneficiary details when company is manually changed
+                          handleInputChange("beneficiaryName", "")
+                          handleInputChange("beneficiaryAccountName", "")
+                          handleInputChange("beneficiaryAccountNumber", "")
+                          handleInputChange("beneficiaryBankName", "")
+                          handleInputChange("beneficiaryBankIFSC", "")
+                          handleInputChange("vendorNumber", "")
+                          handleInputChange("vendorEmail", "")
+                          handleCompanySelection(val)
+                        }}
+                      >
+                        <SelectTrigger className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
+                          <SelectValue placeholder="Select Company" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {companyNames.map((company, index) => (
+                            <SelectItem
+                              key={`company-name-${index}-${company.replace(/\s+/g, "-")}`}
+                              value={company}
+                            >
+                              {company}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
                     </div>
 
@@ -1840,37 +1869,27 @@ export default function VoucherPage() {
 
                   </div>
 
-                  {/* Row 1: Bank AC From, Company Name, Date */}
+                  {/* Row 1: Bank AC From, Beneficiary Name (Payer), Date */}
 
 
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-400 pb-3">
 
-                    {/* Company Name */}
+                    {/* BENEFICIARY NAME (PAYER) */}
                     <div>
                       <Label className="text-xs font-bold text-gray-700 uppercase">
-                        Company Name
+                        BENEFICIARY NAME (PAYER)
                       </Label>
 
-                      <Select
-                        value={voucherData.companyName}
-                        onValueChange={handleCompanySelection}
-                      >
-                        <SelectTrigger className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
-                          <SelectValue placeholder="Select Company" />
-                        </SelectTrigger>
-
-                        <SelectContent>
-                          {companyNames.map((company, index) => (
-                            <SelectItem
-                              key={`company-name-${index}-${company.replace(/\s+/g, "-")}`}
-                              value={company}
-                            >
-                              {company}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableBeneficiarySelect
+                        value={voucherData.beneficiaryName}
+                        onValueChange={(val) => handleBeneficiarySelection(val)}
+                        options={beneficiaries.filter(b => 
+                          !voucherData.companyName || 
+                          (b.company_name && b.company_name.trim().toLowerCase() === voucherData.companyName.trim().toLowerCase())
+                        )}
+                        onSelect={handleBeneficiarySelection}
+                      />
                     </div>
 
                     {/* Bank Account */}
@@ -1972,24 +1991,7 @@ export default function VoucherPage() {
 
                     </div>
 
-                    {/* <div className="sm:col-span-4">
-                      <Label className="text-xs font-bold text-gray-700 uppercase">TRANSACTION TYPE</Label>
-                      <Select
-                        value={voucherData.transactionType}
-                        onValueChange={(value) => handleInputChange("transactionType", value)}
-                      >
-                        <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
-                          <SelectValue placeholder="Select Transaction Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {transactionTypes.map((type, index) => (
-                            <SelectItem key={`transaction-type-${index}-${type.replace(/\s+/g, "-")}`} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div> */}
+                  
 
                     <div className="sm:col-span-4">
   <Label className="text-xs font-bold text-gray-700 uppercase">
@@ -2037,37 +2039,15 @@ export default function VoucherPage() {
                       </Select>
                     </div>
 
-                    {/* <div className="sm:col-span-4">
-                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor WhatsApp Number</Label>
-                      <Input
-                        value={voucherData.vendorNumber}
-                        onChange={(e) => handleInputChange("vendorNumber", e.target.value)}
-                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-                        placeholder="Enter 10 digit number"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-4">
-                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor Email</Label>
-                      <Input
-                        type="email"
-                        value={voucherData.vendorEmail}
-                        onChange={(e) => handleInputChange("vendorEmail", e.target.value)}
-                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-                        placeholder="Enter vendor email"
-                      />
-                    </div>
-
-                   */}
+                   
 
                   </div>
 
 
-                  {/* Row 5: Beneficiary Account Details */}
+                  {/* Row 5: Bank Name and IFSC */}
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
-
-                    <div className="sm:col-span-6">
+  <div className="sm:col-span-6">
 
                       <Label className="text-xs font-bold text-gray-700 uppercase">
 
@@ -2091,6 +2071,98 @@ export default function VoucherPage() {
 
                     </div>
 
+
+                    <div className="sm:col-span-6">
+
+                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY BANK NAME</Label>
+
+                      {availableBeneficiaryBanks.length > 1 ? (
+                        <Select
+                          value={voucherData.beneficiaryBankName ? `${voucherData.beneficiaryBankName} (A/C: ${voucherData.beneficiaryAccountNumber})` : ""}
+                          onValueChange={handleBeneficiaryBankSelection}
+                        >
+                          <SelectTrigger className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
+                            <SelectValue placeholder="Select Beneficiary Bank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableBeneficiaryBanks.map((b, index) => {
+                              const valueCombo = `${b.beneficiary_bank_name} (A/C: ${b.beneficiary_ac_number})`
+                              return (
+                                <SelectItem key={`beneficiary-bank-${index}`} value={valueCombo}>
+                                  {valueCombo}
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+
+                          value={voucherData.beneficiaryBankName}
+
+                          onChange={(e) => handleInputChange("beneficiaryBankName", e.target.value)}
+
+                          className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+
+                          placeholder=""
+
+                          required
+
+                        />
+                      )}
+
+                    </div>
+
+                    {/* <div className="sm:col-span-6">
+
+                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY BANK IFSC</Label>
+
+                      <Input
+
+                        value={voucherData.beneficiaryBankIFSC}
+
+                        onChange={(e) => handleInputChange("beneficiaryBankIFSC", e.target.value)}
+
+                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+
+                        placeholder=""
+
+                        required
+
+                      />
+
+                    </div> */}
+
+                  </div>
+
+                  {/* Row 6: Beneficiary Account Details */}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
+
+                    {/* <div className="sm:col-span-6">
+
+                      <Label className="text-xs font-bold text-gray-700 uppercase">
+
+                        (NAME OF AC HOLDER) BENEFICIARY A/C NAME
+
+                      </Label>
+
+                      <Input
+
+                        value={voucherData.beneficiaryAccountName}
+
+                        onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
+
+                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
+
+                        placeholder=""
+
+                        required
+
+                      />
+
+                    </div> */}
+
                     <div className="sm:col-span-6">
 
                       <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY A/C NUMBER</Label>
@@ -2111,33 +2183,8 @@ export default function VoucherPage() {
 
                     </div>
 
-                  </div>
 
-                  {/* Row 6: Bank Name and IFSC */}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
-
-                    <div className="sm:col-span-6">
-
-                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY BANK NAME</Label>
-
-                      <Input
-
-                        value={voucherData.beneficiaryBankName}
-
-                        onChange={(e) => handleInputChange("beneficiaryBankName", e.target.value)}
-
-                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
-                        placeholder=""
-
-                        required
-
-                      />
-
-                    </div>
-
-                    <div className="sm:col-span-6">
+                     <div className="sm:col-span-6">
 
                       <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY BANK IFSC</Label>
 

@@ -99,7 +99,6 @@ export default function DashboardPage() {
               companyName: row.company_name || '',
               dateOfPaymentProcess: row.date_of_payment || '',
               purposeOfPayment: row.purpose_of_payment || '',
-              transactionType: row.transaction_type || '',
               project: row.project || '',
               beneficiaryName: row.beneficiary_name || '',
               poNumber: row.po_number || '',
@@ -257,7 +256,12 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-xs sm:text-sm font-medium">Total Amount</p>
-                <p className="text-sm sm:text-3xl font-bold">₹{getTotalAmount().toLocaleString("en-IN")}</p>
+                <p 
+                  className="text-sm sm:text-2xl lg:text-lg xl:text-2xl font-bold truncate max-w-[120px] sm:max-w-[180px] lg:max-w-[140px] xl:max-w-[180px]"
+                  title={`₹${getTotalAmount().toLocaleString("en-IN")}`}
+                >
+                  ₹{getTotalAmount().toLocaleString("en-IN")}
+                </p>
               </div>
               <DollarSign className="h-4 w-4 sm:h-8 sm:w-8 text-green-200" />
             </div>
@@ -281,7 +285,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-xs sm:text-sm font-medium">Avg Amount</p>
-                <p className="text-sm sm:text-3xl font-bold">
+                <p 
+                  className="text-sm sm:text-2xl lg:text-lg xl:text-2xl font-bold truncate max-w-[120px] sm:max-w-[180px] lg:max-w-[140px] xl:max-w-[180px]"
+                  title={`₹${vouchers.length > 0 ? Math.round(getTotalAmount() / vouchers.length).toLocaleString("en-IN") : "0"}`}
+                >
                   ₹
                   {vouchers.length > 0 ? Math.round(getTotalAmount() / vouchers.length).toLocaleString("en-IN") : "0"}
                 </p>
@@ -453,9 +460,9 @@ export default function DashboardPage() {
                       <p className="font-bold text-green-600 text-sm sm:text-base">
                         ₹{Number.parseFloat(voucher.amount).toLocaleString("en-IN")}
                       </p>
-                      <Badge variant="outline" className="text-xs mt-1">
+                      {/* <Badge variant="outline" className="text-xs mt-1">
                         {voucher.transactionType}
-                      </Badge>
+                      </Badge> */}
                     </div>
                   </div>
                 ))}

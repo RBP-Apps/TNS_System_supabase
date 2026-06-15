@@ -29,6 +29,14 @@ const convertNumberToWords = (num: number): string => {
   return convertNumberToWords(Math.floor(num / 10000000)) + " Crore" + (num % 10000000 ? " " + convertNumberToWords(num % 10000000) : "")
 }
 
+interface ContraMasterRecord {
+  id: number
+  company_name: string
+  bank_name: string
+  account_no: string
+  ifsc_code: string
+}
+
 export default function SelfTransferPage() {
   const router = useRouter()
   const [username, setUsername] = useState("")
@@ -37,10 +45,12 @@ export default function SelfTransferPage() {
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true)
 
   const [companyNames, setCompanyNames] = useState<string[]>([])
-  const [bankAccounts, setBankAccounts] = useState<string[]>([])
   const [transactionTypes, setTransactionTypes] = useState<string[]>([])
-  const [filteredBankAccounts, setFilteredBankAccounts] = useState<string[]>([])
   const [beneficiaries, setBeneficiaries] = useState<any[]>([])
+
+  const [contraRecords, setContraRecords] = useState<ContraMasterRecord[]>([])
+  const [availableFromAccounts, setAvailableFromAccounts] = useState<ContraMasterRecord[]>([])
+  const [availableToAccounts, setAvailableToAccounts] = useState<ContraMasterRecord[]>([])
 
   const [formData, setFormData] = useState({
     companyName: "",
@@ -78,7 +88,6 @@ export default function SelfTransferPage() {
     try {
       await Promise.all([
         fetchCompanyNames(),
-        fetchBankAccounts(),
         fetchTransactionTypes(),
         fetchBeneficiaries()
       ])
@@ -90,18 +99,9 @@ export default function SelfTransferPage() {
   }
 
   const fetchCompanyNames = async () => {
-    const { data, error } = await supabase.from('master').select('company_name')
+    const { data, error } = await supabase.from('contra_master').select('company_name')
     if (!error && data) {
       setCompanyNames([...new Set(data.map(i => i.company_name).filter(Boolean))])
-    }
-  }
-
-  const fetchBankAccounts = async () => {
-    const { data, error } = await supabase.from('master').select('bank_ac_from')
-    if (!error && data) {
-      const accounts = [...new Set(data.map(i => i.bank_ac_from).filter(Boolean))]
-      setBankAccounts(accounts)
-      setFilteredBankAccounts(accounts)
     }
   }
 
@@ -129,38 +129,78 @@ export default function SelfTransferPage() {
     }
   }
 
-  const handleCompanySelection = (value: string) => {
+  const handleCompanySelection = async (value: string) => {
     handleInputChange("companyName", value)
-    setTimeout(() => {
-      const filtered = filterBankAccountsByCompany(value, bankAccounts)
-      setFilteredBankAccounts(filtered)
-      if (formData.bankAcFrom && !filtered.includes(formData.bankAcFrom)) {
-        handleInputChange("bankAcFrom", "")
+
+    // Clear dependent states
+    setFormData(prev => ({
+      ...prev,
+      bankAcFrom: "",
+      beneficiaryAccountName: "",
+      beneficiaryAccountNumber: "",
+      beneficiaryBankName: "",
+      beneficiaryBankIFSC: "",
+    }))
+
+    setAvailableFromAccounts([])
+    setAvailableToAccounts([])
+
+    if (!value) return
+
+    try {
+      const { data, error } = await supabase
+        .from('contra_master')
+        .select('*')
+        .eq('company_name', value)
+
+      if (!error && data) {
+        setContraRecords(data)
+        setAvailableFromAccounts(data)
       }
-    }, 100)
+    } catch (error) {
+      console.error("Error fetching contra records for company:", error)
+    }
   }
 
-  const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: string[]) => {
-    if (!selectedCompany || !allBankAccounts.length) return allBankAccounts
+  const handleBankAcFromSelection = (value: string) => {
+    handleInputChange("bankAcFrom", value)
 
-    const keywords = selectedCompany.split(' ').filter(word => {
-      const upperWord = word.toUpperCase()
-      return word.length > 2 && !['PVT', 'LTD', 'LIMITED', 'PRIVATE', 'INDIA', 'COMPANY'].includes(upperWord)
+    // Clear Bank To fields
+    setFormData(prev => ({
+      ...prev,
+      beneficiaryAccountName: "",
+      beneficiaryAccountNumber: "",
+      beneficiaryBankName: "",
+      beneficiaryBankIFSC: "",
+    }))
+
+    // Filter available to accounts: remaining accounts for this company excluding the selected account
+    const toAccounts = contraRecords.filter(item => {
+      const last4 = item.account_no ? item.account_no.slice(-4) : ""
+      const displayName = `${item.bank_name} - ${last4}`
+      return displayName !== value
+    })
+    setAvailableToAccounts(toAccounts)
+  }
+
+  const handleBankAcToSelection = (value: string) => {
+    handleInputChange("beneficiaryAccountName", value)
+
+    const selectedRecord = availableToAccounts.find(item => {
+      const last4 = item.account_no ? item.account_no.slice(-4) : ""
+      const displayName = `${item.bank_name} - ${last4}`
+      return displayName === value
     })
 
-    const strategies = [
-      (acc: string) => keywords.every(k => acc.toUpperCase().includes(k.toUpperCase())),
-      (acc: string) => keywords.filter(k => acc.toUpperCase().includes(k.toUpperCase())).length >= Math.min(2, keywords.length),
-      (acc: string) => keywords.some(k => acc.toUpperCase().includes(k.toUpperCase()))
-    ]
-
-    for (const strategy of strategies) {
-      const filtered = allBankAccounts.filter(strategy)
-      if (filtered.length > 0) return filtered
+    if (selectedRecord) {
+      setFormData(prev => ({
+        ...prev,
+        beneficiaryAccountNumber: selectedRecord.account_no || "",
+        beneficiaryBankName: selectedRecord.bank_name || "",
+        beneficiaryBankIFSC: selectedRecord.ifsc_code || ""
+      }))
     }
-    return allBankAccounts
   }
-
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => {
@@ -196,6 +236,7 @@ export default function SelfTransferPage() {
         purposeOfPayment: formData.purposeOfPayment,
         transactionType: formData.transactionType,
         project: "",
+        poNumber: "",
         particulars: formData.particulars,
         entryDoneBy: "",
         checkedBy: "",
@@ -260,35 +301,20 @@ export default function SelfTransferPage() {
 
       // Reset Form
       setFormData({
-        beneficiaryName: "",
         companyName: "",
         bankAcFrom: "",
         dateOfPayment: new Date().toISOString().split("T")[0],
-
         amount: "",
         amountInWords: "",
-
         transactionType: "Contra",
         purposeOfPayment: "",
-
-        project: "",
-        poNumber: "",
-
         utrNumber: "",
-
         beneficiaryAccountName: "",
         beneficiaryAccountNumber: "",
         beneficiaryBankName: "",
         beneficiaryBankIFSC: "",
-
         particulars: "",
-
-        entryDoneBy: username,
-        checkedBy: "",
         approvedBy: "",
-
-        vendorNumber: "",
-        vendorEmail: "",
       })
     } catch (error: any) {
       console.error("Error adding Contra:", error)
@@ -325,12 +351,20 @@ export default function SelfTransferPage() {
                 </div>
                 <div>
                   <Label className="text-xs font-bold text-gray-700 uppercase">BANK AC FROM</Label>
-                  <Select value={formData.bankAcFrom} onValueChange={(v) => handleInputChange("bankAcFrom", v)}>
+                  <Select value={formData.bankAcFrom} onValueChange={handleBankAcFromSelection}>
                     <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
                       <SelectValue placeholder="Select Bank" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredBankAccounts.map((a, i) => <SelectItem key={i} value={a}>{a}</SelectItem>)}
+                      {availableFromAccounts.map((item, idx) => {
+                        const last4 = item.account_no ? item.account_no.slice(-4) : ""
+                        const displayName = `${item.bank_name} - ${last4}`
+                        return (
+                          <SelectItem key={idx} value={displayName}>
+                            {displayName}
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -383,11 +417,22 @@ export default function SelfTransferPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-400 pb-4">
                 <div>
                   <Label className="text-xs font-bold text-gray-700 uppercase">Bank A/C To</Label>
-                  <Input
-                    value={formData.beneficiaryAccountName}
-                    onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
-                    className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600"
-                  />
+                  <Select value={formData.beneficiaryAccountName} onValueChange={handleBankAcToSelection}>
+                    <SelectTrigger className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-teal-600">
+                      <SelectValue placeholder="Select Bank A/C To" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableToAccounts.map((item, idx) => {
+                        const last4 = item.account_no ? item.account_no.slice(-4) : ""
+                        const displayName = `${item.bank_name} - ${last4}`
+                        return (
+                          <SelectItem key={idx} value={displayName}>
+                            {displayName}
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label className="text-xs font-bold text-gray-700 uppercase">Bank A/C Number To</Label>
