@@ -547,7 +547,7 @@ export default function MasterDataManagement() {
                 <TableHead className="sticky top-0 bg-white z-20 w-24">Action</TableHead>
                 <TableHead className="sticky top-0 bg-white z-20 w-16">S.No</TableHead>
                 <TableHead className="sticky top-0 bg-white z-20">Company Name</TableHead>
-                <TableHead className="sticky top-0 bg-white z-20">Transaction Type</TableHead>
+                {/* <TableHead className="sticky top-0 bg-white z-20">Transaction Type</TableHead> */}
                 <TableHead className="sticky top-0 bg-white z-20">Project</TableHead>
                 <TableHead className="sticky top-0 bg-white z-20">Bank Account (From)</TableHead>
                 <TableHead className="sticky top-0 bg-white z-20">Payment From Company</TableHead>
@@ -601,12 +601,7 @@ export default function MasterDataManagement() {
                       <span className="font-semibold text-slate-700">{item.company_name || "-"}</span>
                     </TableCell>
 
-                    {/* Transaction Type */}
-                    <TableCell>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100">
-                        {item.transaction_type || "-"}
-                      </Badge>
-                    </TableCell>
+        
 
                     {/* Project */}
                     <TableCell>

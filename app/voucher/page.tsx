@@ -340,15 +340,9 @@ export default function VoucherPage() {
   }
 
   const onCompanyChange = (val: string) => {
-    handleInputChange("beneficiaryName", "")
-    handleInputChange("beneficiaryAccountName", "")
-    handleInputChange("beneficiaryAccountNumber", "")
-    handleInputChange("beneficiaryBankName", "")
-    handleInputChange("beneficiaryBankIFSC", "")
-    handleInputChange("vendorNumber", "")
-    handleInputChange("vendorEmail", "")
     handleCompanySelection(val)
   }
+
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: any[]) => {
     if (!selectedCompany || !allBankAccounts.length) {
@@ -541,8 +535,6 @@ export default function VoucherPage() {
     handleInputChange("beneficiaryName", name)
 
     if (!name) {
-      handleInputChange("companyName", "")
-      handleInputChange("bankAcFrom", "")
       handleInputChange("transactionType", "Payment")
       handleInputChange("poNumber", "")
       handleInputChange("beneficiaryAccountName", "")
@@ -565,11 +557,6 @@ export default function VoucherPage() {
 
     if (matchingRecords.length > 0) {
       const firstRecord = matchingRecords[0]
-
-      // Autofill fields
-      if (firstRecord.company_name) {
-        handleCompanySelection(firstRecord.company_name)
-      }
 
       if (firstRecord.beneficiary_ac_name) {
         handleInputChange("beneficiaryAccountName", firstRecord.beneficiary_ac_name)
@@ -1957,18 +1944,7 @@ export default function VoucherPage() {
                       <SearchableBeneficiarySelect
                         value={voucherData.beneficiaryName}
                         onValueChange={(val) => handleBeneficiarySelection(val)}
-                        options={(() => {
-                          if (!voucherData.companyName) return beneficiaries
-                          const filtered = beneficiaries.filter(b => 
-                            allBeneficiaryRecords.some(record => 
-                              record.beneficiary_name.trim().toLowerCase() === b.beneficiary_name.trim().toLowerCase() &&
-                              matchCompany(record.company_name, voucherData.companyName)
-                            )
-                          )
-                          // Fall back to showing all beneficiaries if no historical matches are found
-                          // for this specific company, so that users can still select any beneficiary.
-                          return filtered.length > 0 ? filtered : beneficiaries
-                        })()}
+                        options={beneficiaries}
                         onSelect={handleBeneficiarySelection}
                       />
                     </div>
