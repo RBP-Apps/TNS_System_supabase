@@ -138,6 +138,92 @@ const SearchableBeneficiarySelect = ({
 }
 
 
+const SearchableCompanySelect = ({
+  value,
+  onValueChange,
+  options,
+  onSelect,
+}: {
+  value: string
+  onValueChange: (v: string) => void
+  options: string[]
+  onSelect: (name: string) => void
+}) => {
+  const [open, setOpen] = React.useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const filteredOptions = React.useMemo(() => {
+    if (!value) return options
+    return options.filter((opt) =>
+      opt.toLowerCase().includes(value.toLowerCase())
+    )
+  }, [value, options])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <Input
+        value={value}
+        onChange={(e) => {
+          onValueChange(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600 pr-8 w-full"
+        placeholder="Type or select company"
+        required
+      />
+      <ChevronsUpDown
+        className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50 cursor-pointer"
+        onClick={() => setOpen(!open)}
+      />
+
+      {open && filteredOptions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none">
+          {filteredOptions.map((company, index) => (
+            <div
+              key={`company-option-${index}-${company}`}
+              className={cn(
+                "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                value === company && "bg-accent text-accent-foreground"
+              )}
+              onClick={() => {
+                onSelect(company)
+                setOpen(false)
+              }}
+            >
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  value === company ? "opacity-100" : "opacity-0"
+                )}
+              />
+              {company}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+
+const matchCompany = (comp1: string, comp2: string) => {
+  if (!comp1 || !comp2) return false
+  const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/\s+/g, "")
+  return clean(comp1) === clean(comp2)
+}
 
 const extractFirstTwoWords = (text: string) => {
   if (!text) return ""
@@ -251,6 +337,17 @@ export default function VoucherPage() {
         handleInputChange("bankAcFrom", "")
       }
     }, 100)
+  }
+
+  const onCompanyChange = (val: string) => {
+    handleInputChange("beneficiaryName", "")
+    handleInputChange("beneficiaryAccountName", "")
+    handleInputChange("beneficiaryAccountNumber", "")
+    handleInputChange("beneficiaryBankName", "")
+    handleInputChange("beneficiaryBankIFSC", "")
+    handleInputChange("vendorNumber", "")
+    handleInputChange("vendorEmail", "")
+    handleCompanySelection(val)
   }
 
   const filterBankAccountsByCompany = (selectedCompany: string, allBankAccounts: any[]) => {
@@ -1818,35 +1915,12 @@ export default function VoucherPage() {
                     <div className="sm:col-span-8">
 
                       <Label className="text-xs font-bold text-gray-700 uppercase">Company Name</Label>
-                      <Select
+                      <SearchableCompanySelect
                         value={voucherData.companyName}
-                        onValueChange={(val) => {
-                          // Clear beneficiary details when company is manually changed
-                          handleInputChange("beneficiaryName", "")
-                          handleInputChange("beneficiaryAccountName", "")
-                          handleInputChange("beneficiaryAccountNumber", "")
-                          handleInputChange("beneficiaryBankName", "")
-                          handleInputChange("beneficiaryBankIFSC", "")
-                          handleInputChange("vendorNumber", "")
-                          handleInputChange("vendorEmail", "")
-                          handleCompanySelection(val)
-                        }}
-                      >
-                        <SelectTrigger className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600">
-                          <SelectValue placeholder="Select Company" />
-                        </SelectTrigger>
-
-                        <SelectContent>
-                          {companyNames.map((company, index) => (
-                            <SelectItem
-                              key={`company-name-${index}-${company.replace(/\s+/g, "-")}`}
-                              value={company}
-                            >
-                              {company}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onValueChange={onCompanyChange}
+                        options={companyNames}
+                        onSelect={onCompanyChange}
+                      />
 
                     </div>
 
@@ -1883,10 +1957,18 @@ export default function VoucherPage() {
                       <SearchableBeneficiarySelect
                         value={voucherData.beneficiaryName}
                         onValueChange={(val) => handleBeneficiarySelection(val)}
-                        options={beneficiaries.filter(b => 
-                          !voucherData.companyName || 
-                          (b.company_name && b.company_name.trim().toLowerCase() === voucherData.companyName.trim().toLowerCase())
-                        )}
+                        options={(() => {
+                          if (!voucherData.companyName) return beneficiaries
+                          const filtered = beneficiaries.filter(b => 
+                            allBeneficiaryRecords.some(record => 
+                              record.beneficiary_name.trim().toLowerCase() === b.beneficiary_name.trim().toLowerCase() &&
+                              matchCompany(record.company_name, voucherData.companyName)
+                            )
+                          )
+                          // Fall back to showing all beneficiaries if no historical matches are found
+                          // for this specific company, so that users can still select any beneficiary.
+                          return filtered.length > 0 ? filtered : beneficiaries
+                        })()}
                         onSelect={handleBeneficiarySelection}
                       />
                     </div>
