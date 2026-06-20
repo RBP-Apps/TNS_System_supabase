@@ -1,5 +1,5 @@
 import React, { memo } from "react"
-import { Search, Filter, X, Check, ChevronsUpDown } from "lucide-react"
+import { Search, Filter, X, Check, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,98 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+
+const formatLocalDate = (date: Date): string => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+interface MonthPickerProps {
+  onSelectRange: (from: string, to: string) => void
+}
+
+const MonthPicker: React.FC<MonthPickerProps> = ({ onSelectRange }) => {
+  const [year, setYear] = React.useState(new Date().getFullYear())
+  const [open, setOpen] = React.useState(false)
+
+  const months = [
+    { name: "Jan", index: 0 },
+    { name: "Feb", index: 1 },
+    { name: "Mar", index: 2 },
+    { name: "Apr", index: 3 },
+    { name: "May", index: 4 },
+    { name: "Jun", index: 5 },
+    { name: "Jul", index: 6 },
+    { name: "Aug", index: 7 },
+    { name: "Sep", index: 8 },
+    { name: "Oct", index: 9 },
+    { name: "Nov", index: 10 },
+    { name: "Dec", index: 11 },
+  ]
+
+  const handleMonthClick = (monthIndex: number) => {
+    const firstDay = new Date(year, monthIndex, 1)
+    const lastDay = new Date(year, monthIndex + 1, 0)
+    onSelectRange(formatLocalDate(firstDay), formatLocalDate(lastDay))
+    setOpen(false)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="text-xs h-8 px-3 rounded-lg bg-emerald-50/60 border-emerald-100 hover:bg-emerald-100/60 text-emerald-600 font-semibold flex items-center gap-1"
+        >
+          <span>Monthly</span>
+          <ChevronsUpDown className="h-3 w-3 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3 bg-white border border-slate-100 rounded-xl shadow-lg" align="start">
+        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-lg hover:bg-slate-100 text-slate-600"
+            onClick={() => setYear((prev) => prev - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-bold text-slate-700">{year}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-lg hover:bg-slate-100 text-slate-600"
+            onClick={() => setYear((prev) => prev + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {months.map((m) => (
+            <Button
+              key={m.index}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleMonthClick(m.index)}
+              className="text-xs py-1.5 h-auto rounded-lg border-slate-100 hover:border-emerald-100 hover:bg-emerald-50/60 hover:text-emerald-700 text-slate-600 font-medium transition-colors"
+            >
+              {m.name}
+            </Button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 
 interface VoucherFiltersProps {
   recordType: string
@@ -332,7 +424,7 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
               variant="outline"
               size="sm"
               onClick={() => {
-                const today = new Date().toISOString().split("T")[0]
+                const today = formatLocalDate(new Date())
                 setDateFrom(today)
                 setDateTo(today)
               }}
@@ -340,29 +432,21 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
             >
               Today
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const now = new Date()
-                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
-                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]
-                setDateFrom(firstDay)
-                setDateTo(lastDay)
+            <MonthPicker
+              onSelectRange={(from, to) => {
+                setDateFrom(from)
+                setDateTo(to)
               }}
-              className="text-xs h-8 px-3 rounded-lg bg-emerald-50/60 border-emerald-100 hover:bg-emerald-100/60 text-emerald-600 font-semibold"
-            >
-              Monthly
-            </Button>
+            />
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 const now = new Date()
-                const firstDay = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
-                const lastDay = new Date(now.getFullYear(), 11, 31).toISOString().split("T")[0]
-                setDateFrom(firstDay)
-                setDateTo(lastDay)
+                const firstDay = new Date(now.getFullYear(), 0, 1)
+                const lastDay = new Date(now.getFullYear(), 11, 31)
+                setDateFrom(formatLocalDate(firstDay))
+                setDateTo(formatLocalDate(lastDay))
               }}
               className="text-xs h-8 px-3 rounded-lg bg-purple-50/60 border-purple-100 hover:bg-purple-100/60 text-purple-600 font-semibold"
             >
