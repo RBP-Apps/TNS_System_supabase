@@ -1727,36 +1727,61 @@ export default function VoucherPage() {
 
         const messageContent = `An amount of rupees ${finalSubmissionData.amount} has been transfered to account having ${finalSubmissionData.utrNumber} and ${formattedDate} from ${finalSubmissionData.companyName}`
 
-        // WhatsApp Integration via Edge Function
-        const rawPhone = finalSubmissionData.vendorNumber.replace(/\D/g, '')
-        const vendorPhone = rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`
+        // WhatsApp Integration via Edge Function (supports multiple comma-separated numbers)
+        if (finalSubmissionData.vendorNumber) {
+          const whatsappNumbers = finalSubmissionData.vendorNumber
+            .split(',')
+            .map(num => num.trim())
+            .filter(Boolean)
 
-        await supabase.functions.invoke('whatsapp-notification', {
-          body: {
-            to: vendorPhone,
-            beneficiaryName: finalSubmissionData.beneficiaryName,
-            amount: finalSubmissionData.amount,
-            utr: finalSubmissionData.utrNumber,
-            date: formattedDate,
-            company: finalSubmissionData.companyName
+          for (const phone of whatsappNumbers) {
+            try {
+              const rawPhone = phone.replace(/\D/g, '')
+              if (rawPhone) {
+                const vendorPhone = rawPhone.startsWith('91') ? rawPhone : `91${rawPhone}`
+                await supabase.functions.invoke('whatsapp-notification', {
+                  body: {
+                    to: vendorPhone,
+                    beneficiaryName: finalSubmissionData.beneficiaryName,
+                    amount: finalSubmissionData.amount,
+                    utr: finalSubmissionData.utrNumber,
+                    date: formattedDate,
+                    company: finalSubmissionData.companyName
+                  }
+                })
+              }
+            } catch (phoneError) {
+              console.error(`Failed to send WhatsApp to ${phone}:`, phoneError)
+            }
           }
-        })
+        }
 
-        // Email Integration via EmailJS
+        // Email Integration via EmailJS (supports multiple comma-separated emails)
         if (finalSubmissionData.vendorEmail) {
-          await emailjs.send(
-            process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "",
-            process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "",
-            {
-              amount: finalSubmissionData.amount,
-              utr_number: finalSubmissionData.utrNumber,
-              dated: formattedDate,
-              company_name: finalSubmissionData.companyName,
-              to_email: finalSubmissionData.vendorEmail,
-              message: messageContent
-            },
-            process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ""
-          )
+          const emails = finalSubmissionData.vendorEmail
+            .split(',')
+            .map(email => email.trim())
+            .filter(Boolean)
+
+          for (const email of emails) {
+            try {
+              await emailjs.send(
+                process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "",
+                process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "",
+                {
+                  amount: finalSubmissionData.amount,
+                  utr_number: finalSubmissionData.utrNumber,
+                  dated: formattedDate,
+                  company_name: finalSubmissionData.companyName,
+                  to_email: email,
+                  message: messageContent
+                },
+                process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ""
+              )
+            } catch (emailError) {
+              console.error(`Failed to send Email to ${email}:`, emailError)
+            }
+          }
         }
       } catch (notifyError) {
         console.error("Notification error:", notifyError)
@@ -2004,22 +2029,23 @@ export default function VoucherPage() {
                   {/* Vendor Details Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-400 pb-3">
                     <div>
-                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor WhatsApp Number</Label>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor WhatsApp Number(s)</Label>
                       <Input
                         value={voucherData.vendorNumber}
                         onChange={(e) => handleInputChange("vendorNumber", e.target.value)}
                         className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-                        placeholder="Enter 10 digit number"
+                        placeholder="Enter WhatsApp number(s), comma-separated"
                       />
                     </div>
+                    
                     <div>
-                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor Email</Label>
+                      <Label className="text-xs font-bold text-gray-700 uppercase">Vendor Email(s)</Label>
                       <Input
-                        type="email"
+                        type="text"
                         value={voucherData.vendorEmail}
                         onChange={(e) => handleInputChange("vendorEmail", e.target.value)}
                         className="w-full border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-                        placeholder="Enter email address"
+                        placeholder="Enter email address(es), comma-separated"
                       />
                     </div>
                   </div>
@@ -2170,25 +2196,7 @@ export default function VoucherPage() {
 
                     </div>
 
-                    {/* <div className="sm:col-span-6">
-
-                      <Label className="text-xs font-bold text-gray-700 uppercase">BENEFICIARY BANK IFSC</Label>
-
-                      <Input
-
-                        value={voucherData.beneficiaryBankIFSC}
-
-                        onChange={(e) => handleInputChange("beneficiaryBankIFSC", e.target.value)}
-
-                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
-                        placeholder=""
-
-                        required
-
-                      />
-
-                    </div> */}
+                    
 
                   </div>
 
@@ -2196,29 +2204,7 @@ export default function VoucherPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-gray-400 pb-2">
 
-                    {/* <div className="sm:col-span-6">
-
-                      <Label className="text-xs font-bold text-gray-700 uppercase">
-
-                        (NAME OF AC HOLDER) BENEFICIARY A/C NAME
-
-                      </Label>
-
-                      <Input
-
-                        value={voucherData.beneficiaryAccountName}
-
-                        onChange={(e) => handleInputChange("beneficiaryAccountName", e.target.value)}
-
-                        className="border-0 border-b border-gray-400 rounded-none px-1 py-0 h-8 text-sm focus:border-gray-600"
-
-                        placeholder=""
-
-                        required
-
-                      />
-
-                    </div> */}
+                    
 
                     <div className="sm:col-span-6">
 

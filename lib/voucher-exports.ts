@@ -752,7 +752,7 @@ export const generateSummaryPDF = async (options: ExportSummaryOptions) => {
         didDrawPage: (data) => {
           doc.setFontSize(11)
           doc.setTextColor(59, 130, 246)
-          doc.text("Debit Vouchers", data.settings.margin.left, 28)
+          doc.text("Debit Vouchers(Send Payments)", data.settings.margin.left, 28)
         }
       })
 
@@ -790,7 +790,7 @@ export const generateSummaryPDF = async (options: ExportSummaryOptions) => {
         didDrawPage: (data) => {
           doc.setFontSize(11)
           doc.setTextColor(249, 115, 22)
-          doc.text("Credit Vouchers", data.settings.margin.left, 28)
+          doc.text("Credit Vouchers(Receipt Payments)", data.settings.margin.left, 28)
         }
       })
     }

@@ -19,7 +19,6 @@ import {
 interface MasterRecord {
   id: number;
   company_name: string;
-  transaction_type: string;
   project: string;
   bank_ac_from: string;
   payment_from_company: string;
@@ -71,7 +70,6 @@ export default function MasterDataManagement() {
 
   const [formData, setFormData] = useState({
     company_name: "",
-    transaction_type: "",
     project: "",
     bank_ac_from: "",
     payment_from_company: ""

@@ -279,7 +279,7 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
 
           {/* Date From */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Date From</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Payment Date From</label>
             <Input
               type="date"
               value={dateFrom}
@@ -290,7 +290,7 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
 
           {/* Date To */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Date To</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Payment Date To</label>
             <Input
               type="date"
               value={dateTo}
@@ -326,7 +326,7 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
 
         {/* Date Shortcuts Row */}
         <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date Shortcuts:</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Date Shortcuts (filters):</span>
           <div className="flex gap-2">
             <Button
               variant="outline"

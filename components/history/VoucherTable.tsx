@@ -84,7 +84,7 @@ export const VoucherTable: React.FC<VoucherTableProps> = ({
                   <>
                     <TableHead className="font-semibold text-xs lg:text-sm">Voucher No.</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Created Date</TableHead>
-                    <TableHead className="font-semibold text-xs lg:text-sm">Voucher Date</TableHead>
+                    <TableHead className="font-semibold text-xs lg:text-sm">Voucher(Payment) Date</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Company</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Bank AC From</TableHead>
                     <TableHead className="font-semibold text-xs lg:text-sm">Beneficiary Name</TableHead>
