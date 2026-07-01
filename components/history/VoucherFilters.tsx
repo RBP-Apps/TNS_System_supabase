@@ -291,10 +291,10 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
               <Input
                 placeholder={
                   recordType === "Debit"
-                    ? "Search by voucher no, beneficiary, project, purpose, company..."
+                    ? "Search by any detail (voucher no, beneficiary, company, UTR, particulars, project, bank...)"
                     : recordType === "Credit"
-                    ? "Search by payer, company, project, purpose..."
-                    : "Search by company, purpose..."
+                    ? "Search by any detail (payer, company, project, purpose, UTR, particulars...)"
+                    : "Search by any detail (company, bank, purpose, UTR, particulars...)"
                 }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

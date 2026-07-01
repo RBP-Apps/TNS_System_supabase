@@ -332,11 +332,56 @@ export const handleExportToExcel = async (options: ExportExcelOptions) => {
     let searchFilter = null
     if (debouncedSearchTerm) {
       if (recordType === "Debit") {
-        searchFilter = `voucher_no.ilike.%${debouncedSearchTerm}%,beneficiary_name.ilike.%${debouncedSearchTerm}%,project.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`
+        searchFilter = [
+          `voucher_no.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_name.ilike.%${debouncedSearchTerm}%`,
+          `project.ilike.%${debouncedSearchTerm}%`,
+          `purpose_of_payment.ilike.%${debouncedSearchTerm}%`,
+          `company_name.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+          `transaction_type.ilike.%${debouncedSearchTerm}%`,
+          `name.ilike.%${debouncedSearchTerm}%`,
+          `po_number.ilike.%${debouncedSearchTerm}%`,
+          `utr_number.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_ac_name.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_ac_number.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_bank_name.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_bank_ifsc.ilike.%${debouncedSearchTerm}%`,
+          `particulars.ilike.%${debouncedSearchTerm}%`,
+          `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+          `entry_done_by.ilike.%${debouncedSearchTerm}%`,
+          `checked_by.ilike.%${debouncedSearchTerm}%`,
+          `approved_by.ilike.%${debouncedSearchTerm}%`
+        ].join(",")
       } else if (recordType === "Credit") {
-        searchFilter = `beneficiary_name.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,utr_number.ilike.%${debouncedSearchTerm}%`
+        searchFilter = [
+          `beneficiary_name.ilike.%${debouncedSearchTerm}%`,
+          `company_name.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+          `purpose_of_payment.ilike.%${debouncedSearchTerm}%`,
+          `transaction_type.ilike.%${debouncedSearchTerm}%`,
+          `project.ilike.%${debouncedSearchTerm}%`,
+          `utr_number.ilike.%${debouncedSearchTerm}%`,
+          `particulars.ilike.%${debouncedSearchTerm}%`,
+          `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+          `entry_done_by.ilike.%${debouncedSearchTerm}%`,
+          `checked_by.ilike.%${debouncedSearchTerm}%`
+        ].join(",")
       } else if (recordType === "Transfer") {
-        searchFilter = `company_name.ilike.%${debouncedSearchTerm}%,purpose.ilike.%${debouncedSearchTerm}%,utr_number.ilike.%${debouncedSearchTerm}%`
+        searchFilter = [
+          `company_name.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+          `purpose.ilike.%${debouncedSearchTerm}%`,
+          `transaction_type.ilike.%${debouncedSearchTerm}%`,
+          `utr_number.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_to.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_number_to.ilike.%${debouncedSearchTerm}%`,
+          `bank_name_to.ilike.%${debouncedSearchTerm}%`,
+          `ifsc_to.ilike.%${debouncedSearchTerm}%`,
+          `particulars.ilike.%${debouncedSearchTerm}%`,
+          `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+          `approved_by.ilike.%${debouncedSearchTerm}%`
+        ].join(",")
       }
     }
 
@@ -553,11 +598,56 @@ export const generateSummaryPDF = async (options: ExportSummaryOptions) => {
       let searchFilter = null
       if (debouncedSearchTerm) {
         if (table === "History") {
-          searchFilter = `voucher_no.ilike.%${debouncedSearchTerm}%,beneficiary_name.ilike.%${debouncedSearchTerm}%,project.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%`
+          searchFilter = [
+            `voucher_no.ilike.%${debouncedSearchTerm}%`,
+            `beneficiary_name.ilike.%${debouncedSearchTerm}%`,
+            `project.ilike.%${debouncedSearchTerm}%`,
+            `purpose_of_payment.ilike.%${debouncedSearchTerm}%`,
+            `company_name.ilike.%${debouncedSearchTerm}%`,
+            `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+            `transaction_type.ilike.%${debouncedSearchTerm}%`,
+            `name.ilike.%${debouncedSearchTerm}%`,
+            `po_number.ilike.%${debouncedSearchTerm}%`,
+            `utr_number.ilike.%${debouncedSearchTerm}%`,
+            `beneficiary_ac_name.ilike.%${debouncedSearchTerm}%`,
+            `beneficiary_ac_number.ilike.%${debouncedSearchTerm}%`,
+            `beneficiary_bank_name.ilike.%${debouncedSearchTerm}%`,
+            `beneficiary_bank_ifsc.ilike.%${debouncedSearchTerm}%`,
+            `particulars.ilike.%${debouncedSearchTerm}%`,
+            `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+            `entry_done_by.ilike.%${debouncedSearchTerm}%`,
+            `checked_by.ilike.%${debouncedSearchTerm}%`,
+            `approved_by.ilike.%${debouncedSearchTerm}%`
+          ].join(",")
         } else if (table === "Credit") {
-          searchFilter = `beneficiary_name.ilike.%${debouncedSearchTerm}%,company_name.ilike.%${debouncedSearchTerm}%,purpose_of_payment.ilike.%${debouncedSearchTerm}%,utr_number.ilike.%${debouncedSearchTerm}%`
+          searchFilter = [
+            `beneficiary_name.ilike.%${debouncedSearchTerm}%`,
+            `company_name.ilike.%${debouncedSearchTerm}%`,
+            `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+            `purpose_of_payment.ilike.%${debouncedSearchTerm}%`,
+            `transaction_type.ilike.%${debouncedSearchTerm}%`,
+            `project.ilike.%${debouncedSearchTerm}%`,
+            `utr_number.ilike.%${debouncedSearchTerm}%`,
+            `particulars.ilike.%${debouncedSearchTerm}%`,
+            `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+            `entry_done_by.ilike.%${debouncedSearchTerm}%`,
+            `checked_by.ilike.%${debouncedSearchTerm}%`
+          ].join(",")
         } else if (table === "Contra") {
-          searchFilter = `company_name.ilike.%${debouncedSearchTerm}%,purpose.ilike.%${debouncedSearchTerm}%,utr_number.ilike.%${debouncedSearchTerm}%`
+          searchFilter = [
+            `company_name.ilike.%${debouncedSearchTerm}%`,
+            `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+            `purpose.ilike.%${debouncedSearchTerm}%`,
+            `transaction_type.ilike.%${debouncedSearchTerm}%`,
+            `utr_number.ilike.%${debouncedSearchTerm}%`,
+            `bank_ac_to.ilike.%${debouncedSearchTerm}%`,
+            `bank_ac_number_to.ilike.%${debouncedSearchTerm}%`,
+            `bank_name_to.ilike.%${debouncedSearchTerm}%`,
+            `ifsc_to.ilike.%${debouncedSearchTerm}%`,
+            `particulars.ilike.%${debouncedSearchTerm}%`,
+            `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+            `approved_by.ilike.%${debouncedSearchTerm}%`
+          ].join(",")
         }
       }
 

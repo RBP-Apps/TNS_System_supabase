@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LogOut, History, Save, Building2, BarChart3, Users, Database, Check, ChevronsUpDown, RefreshCw } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
-import { Loader2 , DollarSign } from "lucide-react"
+import { Loader2 , DollarSign, Plus } from "lucide-react"
 import supabase from "@/lib/supabase"
 import emailjs from "@emailjs/browser"
 import { cn } from "@/lib/utils"
@@ -53,6 +53,7 @@ interface VoucherData {
   particulars: string
   entryDoneBy: string
   checkedBy: string
+  approvedBy: string
   vendorNumber: string
   vendorEmail: string
   submittedAt: string
@@ -143,14 +144,23 @@ const SearchableCompanySelect = ({
   onValueChange,
   options,
   onSelect,
+  onCompanyAdded,
 }: {
   value: string
   onValueChange: (v: string) => void
   options: string[]
   onSelect: (name: string) => void
+  onCompanyAdded?: (name: string) => Promise<void>
 }) => {
   const [open, setOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // States for adding a new company
+  const [isOpenAddModal, setIsOpenAddModal] = React.useState(false)
+  const [newCompanyName, setNewCompanyName] = React.useState("")
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [errorMsg, setErrorMsg] = React.useState("")
+  const [successMsg, setSuccessMsg] = React.useState("")
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -170,6 +180,67 @@ const SearchableCompanySelect = ({
     )
   }, [value, options])
 
+  const showAddOption = React.useMemo(() => {
+    if (!value || !value.trim()) return false
+    return !options.some((opt) => opt.trim().toLowerCase() === value.trim().toLowerCase())
+  }, [value, options])
+
+  const handleOpenAddDialog = (initialValue: string) => {
+    setNewCompanyName(initialValue)
+    setErrorMsg("")
+    setSuccessMsg("")
+    setIsOpenAddModal(true)
+  }
+
+  const handleSaveCompany = async () => {
+    const trimmedName = newCompanyName.trim()
+
+    if (!trimmedName) {
+      setErrorMsg("Company name cannot be empty.")
+      return
+    }
+
+    const isDuplicate = options.some(
+      (opt) => opt.trim().toLowerCase() === trimmedName.toLowerCase()
+    )
+    if (isDuplicate) {
+      setErrorMsg("This company name already exists.")
+      return
+    }
+
+    setIsSaving(true)
+    setErrorMsg("")
+    setSuccessMsg("")
+
+    try {
+      const { error } = await supabase
+        .from('master')
+        .insert([{ company_name: trimmedName }])
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setSuccessMsg("Company added successfully!")
+      
+      if (onCompanyAdded) {
+        await onCompanyAdded(trimmedName)
+      } else {
+        onSelect(trimmedName)
+      }
+
+      setTimeout(() => {
+        setIsOpenAddModal(false)
+        setSuccessMsg("")
+      }, 1500)
+    } catch (err: any) {
+      console.error("Error adding company:", err)
+      setErrorMsg(err.message || "Failed to save company. Please try again.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="relative w-full" ref={containerRef}>
       <Input
@@ -188,7 +259,7 @@ const SearchableCompanySelect = ({
         onClick={() => setOpen(!open)}
       />
 
-      {open && filteredOptions.length > 0 && (
+      {open && (filteredOptions.length > 0 || showAddOption) && (
         <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none">
           {filteredOptions.map((company, index) => (
             <div
@@ -211,6 +282,107 @@ const SearchableCompanySelect = ({
               {company}
             </div>
           ))}
+          
+          {showAddOption && (
+            <div
+              className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 hover:text-blue-800 border-t border-gray-100 mt-1 gap-2"
+              onClick={() => {
+                setOpen(false)
+                handleOpenAddDialog(value.trim())
+              }}
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              Add "{value.trim()}"
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add New Company Modal */}
+      {isOpenAddModal && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+          <div 
+            className="w-full max-w-md bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden transform transition-all text-gray-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Add New Company
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setIsOpenAddModal(false)}
+                className="text-white/80 hover:text-white text-xl font-bold transition-colors focus:outline-none"
+                disabled={isSaving}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              <div>
+                <Label htmlFor="modal-company-name" className="text-xs font-bold text-gray-700 uppercase block mb-2">
+                  Company Name
+                </Label>
+                <Input
+                  id="modal-company-name"
+                  value={newCompanyName}
+                  onChange={(e) => {
+                    setNewCompanyName(e.target.value)
+                    if (errorMsg) setErrorMsg("")
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900"
+                  placeholder="Enter company name"
+                  disabled={isSaving}
+                  autoFocus
+                />
+              </div>
+
+              {errorMsg && (
+                <div className="text-sm text-red-600 bg-red-50 p-2.5 rounded-md border border-red-200 font-medium">
+                  {errorMsg}
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="text-sm text-green-600 bg-green-50 p-2.5 rounded-md border border-green-200 font-medium flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-600" />
+                  {successMsg}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-150 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsOpenAddModal(false)}
+                disabled={isSaving}
+                className="border-gray-300 text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveCompany}
+                disabled={isSaving}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -240,17 +412,17 @@ export default function VoucherPage() {
 
   const [nextVoucherNumber, setNextVoucherNumber] = useState("")
 
-  const [paymentFromCompanies, setPaymentFromCompanies] = useState([])
+  const [paymentFromCompanies, setPaymentFromCompanies] = useState<string[]>([])
 
-  const [bankAccounts, setBankAccounts] = useState([])
+  const [bankAccounts, setBankAccounts] = useState<string[]>([])
 
   const [masterBankMappings, setMasterBankMappings] = useState<any[]>([])
 
   const [companyNames, setCompanyNames] = useState<string[]>([]) // New state for company names
 
-  const [transactionTypes, setTransactionTypes] = useState([]) // New state for transaction types
+  const [transactionTypes, setTransactionTypes] = useState<string[]>([]) // New state for transaction types
 
-  const [projects, setProjects] = useState([]) // New state for projects
+  const [projects, setProjects] = useState<string[]>([]) // New state for projects
 
   const [filteredBankAccounts, setFilteredBankAccounts] = useState<any[]>([])
 
@@ -341,6 +513,11 @@ export default function VoucherPage() {
 
   const onCompanyChange = (val: string) => {
     handleCompanySelection(val)
+  }
+
+  const handleCompanyAdded = async (newCompany: string) => {
+    await fetchCompanyNamesFromMaster()
+    handleCompanySelection(newCompany)
   }
 
 
@@ -1932,6 +2109,7 @@ export default function VoucherPage() {
                         onValueChange={onCompanyChange}
                         options={companyNames}
                         onSelect={onCompanyChange}
+                        onCompanyAdded={handleCompanyAdded}
                       />
 
                     </div>
