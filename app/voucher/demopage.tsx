@@ -235,20 +235,33 @@ export default function VoucherPage() {
                 .from('History')
                 .select('voucher_no')
                 .order('id', { ascending: false })
-                .limit(1)
+                .limit(100)
                 
             if (error) throw error
 
-            if (data && data.length > 0 && data[0].voucher_no) {
-                const lastVoucher = data[0].voucher_no
-                const match = lastVoucher.match(/(\D+)-(\d+)/)
-                if (match) {
-                    const prefix = match[1]
-                    const num = parseInt(match[2], 10) + 1
-                    return `${prefix}-${num.toString().padStart(match[2].length, '0')}`
+            let maxNum = 0
+            let prefix = "TNS"
+            let padLength = 2
+
+            if (data && data.length > 0) {
+                for (const row of data) {
+                    if (row.voucher_no) {
+                        const match = row.voucher_no.match(/(\D+)-(\d+)/)
+                        if (match) {
+                            const currentPrefix = match[1]
+                            const num = parseInt(match[2], 10)
+                            if (num > maxNum) {
+                                maxNum = num
+                                prefix = currentPrefix
+                                padLength = match[2].length
+                            }
+                        }
+                    }
                 }
             }
-            return "TNS-01"
+
+            const nextNum = maxNum > 0 ? maxNum + 1 : 1
+            return `${prefix}-${nextNum.toString().padStart(padLength, '0')}`
         } catch (error) {
             console.error("Error getting next voucher number:", error)
             return "TNS-01"
