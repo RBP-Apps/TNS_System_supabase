@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link"
 import { 
   LayoutDashboard, 
   FileText, 
@@ -179,9 +180,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             const isActive = pathname === item.path
             const Icon = item.icon
             return (
-              <button
+              <Link
                 key={item.path}
-                onClick={() => router.push(item.path)}
+                href={item.path}
                 className={`relative flex items-center w-full px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 group cursor-pointer ${
                   isActive 
                     ? `bg-gradient-to-r ${item.color} text-white shadow-lg shadow-orange-500/5` 
@@ -204,7 +205,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     {item.name}
                   </span>
                 )}
-              </button>
+              </Link>
             )
           })}
         </nav>
@@ -277,12 +278,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               const isActive = pathname === item.path
               const Icon = item.icon
               return (
-                <button
+                <Link
                   key={item.path}
-                  onClick={() => {
-                    router.push(item.path)
-                    setIsSidebarOpen(false)
-                  }}
+                  href={item.path}
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`flex items-center w-full px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
                     isActive 
                       ? `bg-gradient-to-r ${item.color} text-white shadow-md` 
@@ -291,7 +290,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 >
                   <Icon className="mr-3 h-4 w-4" />
                   {item.name}
-                </button>
+                </Link>
               )
             })}
           </nav>

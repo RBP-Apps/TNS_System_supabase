@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import supabase from "@/lib/supabase"
-import { PAGE_SIZE } from "@/lib/history-constants"
 import { formatDateForInput, convertNumberToWords } from "@/lib/history-utils"
 import { VoucherData, generateColoredVoucherPDF } from "@/lib/voucher-exports"
 
@@ -102,47 +101,107 @@ export const useHistoryData = () => {
       const purposes = new Set<string>()
 
       if (recordType === "Debit") {
-        const { data } = await supabase
-          .from("History")
-          .select("company_name, transaction_type, project, bank_ac_from, beneficiary_name, purpose_of_payment")
+        const [masterRes, contraMasterRes, beneficiaryRes, historyRes] = await Promise.all([
+          supabase.from("master").select("company_name, project, bank_ac_from"),
+          supabase.from("contra_master").select("company_name, bank_name, account_no"),
+          supabase.from("tns_master").select("beneficiary_name"),
+          supabase.from("History").select("transaction_type, purpose_of_payment, bank_ac_from").order("created_date", { ascending: false }).limit(200)
+        ])
 
-        if (data) {
-          data.forEach((row) => {
+        if (masterRes.data) {
+          masterRes.data.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
-            if (row.transaction_type) transactionTypes.add(row.transaction_type)
             if (row.project) projects.add(row.project)
             if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
+          })
+        }
+        if (contraMasterRes.data) {
+          contraMasterRes.data.forEach((row) => {
+            if (row.company_name) companies.add(row.company_name)
+            if (row.bank_name && row.account_no) {
+              const last4 = row.account_no.slice(-4)
+              bankAccounts.add(`${row.bank_name} - ${last4}`)
+              bankAccounts.add(`${row.bank_name} - ${row.account_no}`)
+            }
+          })
+        }
+        if (beneficiaryRes.data) {
+          beneficiaryRes.data.forEach((row) => {
             if (row.beneficiary_name) names.add(row.beneficiary_name)
+          })
+        }
+        if (historyRes.data) {
+          historyRes.data.forEach((row) => {
+            if (row.transaction_type) transactionTypes.add(row.transaction_type)
             if (row.purpose_of_payment) purposes.add(row.purpose_of_payment)
+            if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
           })
         }
       } else if (recordType === "Credit") {
-        const { data } = await supabase
-          .from("Credit")
-          .select("company_name, transaction_type, project, bank_ac_from, beneficiary_name, purpose_of_payment")
+        const [masterRes, contraMasterRes, beneficiaryRes, creditRes] = await Promise.all([
+          supabase.from("master").select("company_name, project, bank_ac_from"),
+          supabase.from("contra_master").select("company_name, bank_name, account_no"),
+          supabase.from("tns_master").select("beneficiary_name"),
+          supabase.from("Credit").select("transaction_type, purpose_of_payment, bank_ac_from").order("created_date", { ascending: false }).limit(200)
+        ])
 
-        if (data) {
-          data.forEach((row) => {
+        if (masterRes.data) {
+          masterRes.data.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
-            if (row.transaction_type) transactionTypes.add(row.transaction_type)
             if (row.project) projects.add(row.project)
             if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
+          })
+        }
+        if (contraMasterRes.data) {
+          contraMasterRes.data.forEach((row) => {
+            if (row.company_name) companies.add(row.company_name)
+            if (row.bank_name && row.account_no) {
+              const last4 = row.account_no.slice(-4)
+              bankAccounts.add(`${row.bank_name} - ${last4}`)
+              bankAccounts.add(`${row.bank_name} - ${row.account_no}`)
+            }
+          })
+        }
+        if (beneficiaryRes.data) {
+          beneficiaryRes.data.forEach((row) => {
             if (row.beneficiary_name) names.add(row.beneficiary_name)
+          })
+        }
+        if (creditRes.data) {
+          creditRes.data.forEach((row) => {
+            if (row.transaction_type) transactionTypes.add(row.transaction_type)
             if (row.purpose_of_payment) purposes.add(row.purpose_of_payment)
+            if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
           })
         }
       } else if (recordType === "Transfer") {
-        const { data } = await supabase
-          .from("Contra")
-          .select("company_name, transaction_type, bank_ac_from, bank_ac_to, purpose")
+        const [masterRes, contraMasterRes, contraRes] = await Promise.all([
+          supabase.from("master").select("company_name, project, bank_ac_from"),
+          supabase.from("contra_master").select("company_name, bank_name, account_no"),
+          supabase.from("Contra").select("transaction_type, purpose, bank_ac_from").order("created_at", { ascending: false }).limit(200)
+        ])
 
-        if (data) {
-          data.forEach((row) => {
+        if (masterRes.data) {
+          masterRes.data.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
-            if (row.transaction_type) transactionTypes.add(row.transaction_type)
             if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
-            if (row.bank_ac_to) names.add(row.bank_ac_to)
+          })
+        }
+        if (contraMasterRes.data) {
+          contraMasterRes.data.forEach((row) => {
+            if (row.company_name) companies.add(row.company_name)
+            if (row.bank_name && row.account_no) {
+              const last4 = row.account_no.slice(-4)
+              bankAccounts.add(`${row.bank_name} - ${last4}`)
+              bankAccounts.add(`${row.bank_name} - ${row.account_no}`)
+            }
+          })
+        }
+        if (contraRes.data) {
+          contraRes.data.forEach((row) => {
+            if (row.transaction_type) transactionTypes.add(row.transaction_type)
             if (row.purpose) purposes.add(row.purpose)
+            if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
           })
         }
       }
@@ -340,7 +399,10 @@ export const useHistoryData = () => {
       let start = 0
       const orderColumn = (recordType === "Transfer") ? "created_at" : "created_date"
 
-      mainQuery = mainQuery.order(orderColumn, { ascending: false }).range(start, start + PAGE_SIZE - 1)
+      const INITIAL_PAGE_SIZE = 100
+      const BG_CHUNK_SIZE = 1000
+
+      mainQuery = mainQuery.order(orderColumn, { ascending: false }).range(start, start + INITIAL_PAGE_SIZE - 1)
       const mainResult = await mainQuery
 
       if (mainResult.error) throw mainResult.error
@@ -350,10 +412,10 @@ export const useHistoryData = () => {
       let loadedRecords = mainResult.data || []
       processRealSupabaseData(loadedRecords, recordType)
 
-      if (loadedRecords.length === PAGE_SIZE) {
+      if (loadedRecords.length === INITIAL_PAGE_SIZE) {
         ;(async () => {
           let hasMore = true
-          let currentStart = start + PAGE_SIZE
+          let currentStart = start + INITIAL_PAGE_SIZE
 
           while (hasMore) {
             if (currentFetchId !== fetchIdRef.current) break
@@ -363,7 +425,7 @@ export const useHistoryData = () => {
 
             const nextResult = await bgQuery
               .order(orderColumn, { ascending: false })
-              .range(currentStart, currentStart + PAGE_SIZE - 1)
+              .range(currentStart, currentStart + BG_CHUNK_SIZE - 1)
 
             if (nextResult.error) {
               console.error("Background fetch error:", nextResult.error)
@@ -379,13 +441,16 @@ export const useHistoryData = () => {
             }
 
             loadedRecords = [...loadedRecords, ...nextData]
-            processRealSupabaseData(loadedRecords, recordType)
 
-            if (nextData.length < PAGE_SIZE) {
+            if (nextData.length < BG_CHUNK_SIZE) {
               hasMore = false
             } else {
-              currentStart += PAGE_SIZE
+              currentStart += BG_CHUNK_SIZE
             }
+          }
+
+          if (currentFetchId === fetchIdRef.current) {
+            processRealSupabaseData(loadedRecords, recordType)
           }
         })()
       }

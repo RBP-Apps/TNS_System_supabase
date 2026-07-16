@@ -1,9 +1,108 @@
-import type React from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Loader2 } from "lucide-react"
+import { X, Loader2, ChevronsUpDown, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+interface SearchableSelectProps {
+  value: string
+  onValueChange: (v: string) => void
+  options: string[]
+  placeholder?: string
+  disabled?: boolean
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Select option...",
+  disabled = false,
+}) => {
+  const [open, setOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (open) {
+      setSearchTerm("")
+    }
+  }, [open])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return options
+    return options.filter((opt) =>
+      opt.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [searchTerm, options])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <div
+        onClick={() => !disabled && setOpen(!open)}
+        className={cn(
+          "flex h-10 w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+      </div>
+
+      {open && (
+        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-xl border border-gray-200 bg-white p-1 text-gray-700 shadow-xl outline-none animate-in fade-in slide-in-from-top-1 duration-200">
+          <input
+            type="text"
+            className="w-full px-3 py-2 text-sm border-b border-gray-100 focus:outline-none placeholder:text-gray-400"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            autoFocus
+          />
+          <div className="max-h-48 overflow-y-auto mt-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500 italic">No options found</div>
+            ) : (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt}
+                  className={cn(
+                    "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors hover:bg-gray-100 hover:text-gray-900",
+                    value === opt && "bg-gray-50 font-medium text-blue-600"
+                  )}
+                  onClick={() => {
+                    onValueChange(opt)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4 text-blue-600",
+                      value === opt ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {opt}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface VoucherData {
   id: string
@@ -127,22 +226,13 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
               {/* Bank AC From Dropdown */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bank AC From</label>
-                <Select
+                <SearchableSelect
                   value={editVoucher.bankAcFrom}
                   onValueChange={(value) => setEditVoucher((prev) => (prev ? { ...prev, bankAcFrom: value } : null))}
+                  options={bankAccounts}
+                  placeholder={loadingMasterData ? "Loading..." : "Select Bank Account"}
                   disabled={loadingMasterData}
-                >
-                  <SelectTrigger className="w-full border border-gray-300 rounded-lg px-3 py-2 h-auto">
-                    <SelectValue placeholder={loadingMasterData ? "Loading..." : "Select Bank Account"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bankAccounts.map((bank) => (
-                      <SelectItem key={bank} value={bank}>
-                        {bank}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
 
               {/* Date of Payment */}
