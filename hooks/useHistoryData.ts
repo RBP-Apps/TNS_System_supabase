@@ -3,6 +3,35 @@ import supabase from "@/lib/supabase"
 import { formatDateForInput, convertNumberToWords } from "@/lib/history-utils"
 import { VoucherData, generateColoredVoucherPDF } from "@/lib/voucher-exports"
 
+const fetchAllFromTable = async (tableName: string, columns: string) => {
+  let allData: any[] = []
+  let page = 0
+  const pageSize = 1000
+  let hasMore = true
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select(columns)
+      .range(page * pageSize, (page + 1) * pageSize - 1)
+
+    if (error) throw error
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data]
+      if (data.length < pageSize) {
+        hasMore = false
+      } else {
+        page++
+      }
+    } else {
+      hasMore = false
+    }
+  }
+
+  return allData
+}
+
 export interface MasterData {
   companyNames: string[]
   transactionTypes: string[]
@@ -101,22 +130,22 @@ export const useHistoryData = () => {
       const purposes = new Set<string>()
 
       if (recordType === "Debit") {
-        const [masterRes, contraMasterRes, beneficiaryRes, historyRes] = await Promise.all([
-          supabase.from("master").select("company_name, project, bank_ac_from"),
-          supabase.from("contra_master").select("company_name, bank_name, account_no"),
-          supabase.from("tns_master").select("beneficiary_name"),
+        const [masterDataRows, contraMasterDataRows, beneficiaryDataRows, historyRes] = await Promise.all([
+          fetchAllFromTable("master", "company_name, project, bank_ac_from"),
+          fetchAllFromTable("contra_master", "company_name, bank_name, account_no"),
+          fetchAllFromTable("tns_master", "beneficiary_name"),
           supabase.from("History").select("transaction_type, purpose_of_payment, bank_ac_from").order("created_date", { ascending: false }).limit(200)
         ])
 
-        if (masterRes.data) {
-          masterRes.data.forEach((row) => {
+        if (masterDataRows) {
+          masterDataRows.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
             if (row.project) projects.add(row.project)
             if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
           })
         }
-        if (contraMasterRes.data) {
-          contraMasterRes.data.forEach((row) => {
+        if (contraMasterDataRows) {
+          contraMasterDataRows.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
             if (row.bank_name && row.account_no) {
               const last4 = row.account_no.slice(-4)
@@ -125,8 +154,8 @@ export const useHistoryData = () => {
             }
           })
         }
-        if (beneficiaryRes.data) {
-          beneficiaryRes.data.forEach((row) => {
+        if (beneficiaryDataRows) {
+          beneficiaryDataRows.forEach((row) => {
             if (row.beneficiary_name) names.add(row.beneficiary_name)
           })
         }
@@ -138,22 +167,22 @@ export const useHistoryData = () => {
           })
         }
       } else if (recordType === "Credit") {
-        const [masterRes, contraMasterRes, beneficiaryRes, creditRes] = await Promise.all([
-          supabase.from("master").select("company_name, project, bank_ac_from"),
-          supabase.from("contra_master").select("company_name, bank_name, account_no"),
-          supabase.from("tns_master").select("beneficiary_name"),
+        const [masterDataRows, contraMasterDataRows, beneficiaryDataRows, creditRes] = await Promise.all([
+          fetchAllFromTable("master", "company_name, project, bank_ac_from"),
+          fetchAllFromTable("contra_master", "company_name, bank_name, account_no"),
+          fetchAllFromTable("tns_master", "beneficiary_name"),
           supabase.from("Credit").select("transaction_type, purpose_of_payment, bank_ac_from").order("created_date", { ascending: false }).limit(200)
         ])
 
-        if (masterRes.data) {
-          masterRes.data.forEach((row) => {
+        if (masterDataRows) {
+          masterDataRows.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
             if (row.project) projects.add(row.project)
             if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
           })
         }
-        if (contraMasterRes.data) {
-          contraMasterRes.data.forEach((row) => {
+        if (contraMasterDataRows) {
+          contraMasterDataRows.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
             if (row.bank_name && row.account_no) {
               const last4 = row.account_no.slice(-4)
@@ -162,8 +191,8 @@ export const useHistoryData = () => {
             }
           })
         }
-        if (beneficiaryRes.data) {
-          beneficiaryRes.data.forEach((row) => {
+        if (beneficiaryDataRows) {
+          beneficiaryDataRows.forEach((row) => {
             if (row.beneficiary_name) names.add(row.beneficiary_name)
           })
         }
@@ -175,20 +204,20 @@ export const useHistoryData = () => {
           })
         }
       } else if (recordType === "Transfer") {
-        const [masterRes, contraMasterRes, contraRes] = await Promise.all([
-          supabase.from("master").select("company_name, project, bank_ac_from"),
-          supabase.from("contra_master").select("company_name, bank_name, account_no"),
+        const [masterDataRows, contraMasterDataRows, contraRes] = await Promise.all([
+          fetchAllFromTable("master", "company_name, bank_ac_from"),
+          fetchAllFromTable("contra_master", "company_name, bank_name, account_no"),
           supabase.from("Contra").select("transaction_type, purpose, bank_ac_from").order("created_at", { ascending: false }).limit(200)
         ])
 
-        if (masterRes.data) {
-          masterRes.data.forEach((row) => {
+        if (masterDataRows) {
+          masterDataRows.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
             if (row.bank_ac_from) bankAccounts.add(row.bank_ac_from)
           })
         }
-        if (contraMasterRes.data) {
-          contraMasterRes.data.forEach((row) => {
+        if (contraMasterDataRows) {
+          contraMasterDataRows.forEach((row) => {
             if (row.company_name) companies.add(row.company_name)
             if (row.bank_name && row.account_no) {
               const last4 = row.account_no.slice(-4)

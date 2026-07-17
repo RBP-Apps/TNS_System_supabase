@@ -311,7 +311,7 @@ const EditVoucherModal: React.FC<EditVoucherModalProps> = ({
                   editVoucher.recordType !== "Credit",
                 ],
               ]
-                .filter(([,, show]) => show)
+                .filter(([, , show]) => show)
                 .map(([label, key]) => (
                   <div key={key as string}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{label as string}</label>

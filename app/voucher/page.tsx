@@ -593,13 +593,33 @@ export default function VoucherPage() {
 
   const fetchCompanyNamesFromMaster = async () => {
     try {
-      const { data, error } = await supabase.from('master').select('company_name')
-      if (error) throw error
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (data) {
-        const uniqueCompanyNames = [...new Set(data.map(item => item.company_name).filter(Boolean))]
-        setCompanyNames(uniqueCompanyNames)
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('master')
+          .select('company_name')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+
+      const uniqueCompanyNames = [...new Set(allData.map(item => item.company_name).filter(Boolean))]
+      setCompanyNames(uniqueCompanyNames)
     } catch (error) {
       console.error("Error fetching company names from master:", error)
     }
@@ -607,15 +627,35 @@ export default function VoucherPage() {
 
   const fetchBankAccountsFromMaster = async () => {
     try {
-      const { data, error } = await supabase.from('master').select('company_name, bank_ac_from')
-      if (error) throw error
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (data) {
-        setMasterBankMappings(data)
-        const uniqueBankAccounts = [...new Set(data.map(item => item.bank_ac_from).filter(Boolean))]
-        setBankAccounts(uniqueBankAccounts)
-        setFilteredBankAccounts(uniqueBankAccounts)
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('master')
+          .select('company_name, bank_ac_from')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+
+      setMasterBankMappings(allData)
+      const uniqueBankAccounts = [...new Set(allData.map(item => item.bank_ac_from).filter(Boolean))]
+      setBankAccounts(uniqueBankAccounts)
+      setFilteredBankAccounts(uniqueBankAccounts)
     } catch (error) {
       console.error("Error fetching bank accounts from master:", error)
     }
@@ -632,13 +672,33 @@ export default function VoucherPage() {
 
   const fetchProjectsFromMaster = async () => {
     try {
-      const { data, error } = await supabase.from('master').select('project')
-      if (error) throw error
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (data) {
-        const uniqueProjects = [...new Set(data.map(item => item.project).filter(Boolean))]
-        setProjects(uniqueProjects)
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('master')
+          .select('project')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+
+      const uniqueProjects = [...new Set(allData.map(item => item.project).filter(Boolean))]
+      setProjects(uniqueProjects)
     } catch (error) {
       console.error("Error fetching projects from master:", error)
     }
@@ -646,25 +706,44 @@ export default function VoucherPage() {
 
   const fetchBeneficiariesFromHistory = async () => {
     try {
-      const { data, error } = await supabase
-        .from('tns_master')
-        .select(`
-          beneficiary_name,
-          beneficiary_account_number,
-          beneficiary_bank_name,
-          beneficiary_bank_ifsc,
-          company_name,
-          whatsapp_no,
-          email_id,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('tns_master')
+          .select(`
+            beneficiary_name,
+            beneficiary_account_number,
+            beneficiary_bank_name,
+            beneficiary_bank_ifsc,
+            company_name,
+            whatsapp_no,
+            email_id,
+            created_at
+          `)
+          .order('created_at', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (data) {
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allData.length > 0) {
         // Save all records (including duplicates for multiple bank accounts)
-        const mappedRecords = data.map(item => ({
+        const mappedRecords = allData.map(item => ({
           beneficiary_name: item.beneficiary_name,
           company_name: item.company_name || '',
           beneficiary_ac_name: item.beneficiary_name,
@@ -678,7 +757,7 @@ export default function VoucherPage() {
 
         // Use a Map to keep only the latest record for each beneficiary_name in dropdown options
         const uniqueBeneficiariesMap = new Map()
-        data.forEach(item => {
+        allData.forEach(item => {
           if (item.beneficiary_name) {
             const key = item.beneficiary_name.trim().toLowerCase()
             if (!uniqueBeneficiariesMap.has(key)) {
@@ -793,13 +872,33 @@ export default function VoucherPage() {
 
   const fetchPaymentFromCompaniesFromMaster = async () => {
     try {
-      const { data, error } = await supabase.from('master').select('payment_from_company')
-      if (error) throw error
+      let allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (data) {
-        const uniquePaymentFromCompanies = [...new Set(data.map(item => item.payment_from_company).filter(Boolean))]
-        setPaymentFromCompanies(uniquePaymentFromCompanies)
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('master')
+          .select('payment_from_company')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+
+      const uniquePaymentFromCompanies = [...new Set(allData.map(item => item.payment_from_company).filter(Boolean))]
+      setPaymentFromCompanies(uniquePaymentFromCompanies)
     } catch (error) {
       console.error("Error fetching payment from companies from master:", error)
     }

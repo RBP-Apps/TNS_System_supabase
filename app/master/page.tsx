@@ -163,13 +163,33 @@ export default function MasterDataManagement() {
   const fetchMasterData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("master")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let allData: MasterRecord[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
-      setMasterData(data || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("master")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setMasterData(allData);
     } catch (error) {
       console.error("Error fetching master data:", error);
     } finally {
@@ -212,14 +232,33 @@ export default function MasterDataManagement() {
 
   const fetchBeneficiaryData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("tns_master")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let allData: BeneficiaryRecord[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("tns_master")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      setBeneficiaryData(data || []);
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setBeneficiaryData(allData);
     } catch (error) {
       console.error(error);
     }
@@ -227,14 +266,33 @@ export default function MasterDataManagement() {
 
   const fetchContraData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("contra_master")
-        .select("*")
-        .order("created_at", { ascending: false });
+      let allData: ContraRecord[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("contra_master")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      setContraData(data || []);
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setContraData(allData);
     } catch (error) {
       console.error("Error fetching contra data:", error);
     }
