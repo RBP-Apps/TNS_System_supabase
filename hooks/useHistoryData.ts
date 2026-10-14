@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import supabase from "@/lib/supabase"
-import { formatDateForInput, convertNumberToWords } from "@/lib/history-utils"
+import { formatDateForInput, convertNumberToWords, getCalendarWeekNumber, getWeekDateRange } from "@/lib/history-utils"
 import { VoucherData, generateColoredVoucherPDF } from "@/lib/voucher-exports"
 
 const fetchAllFromTable = async (tableName: string, columns: string) => {
@@ -76,6 +76,8 @@ export const useHistoryData = () => {
   const [selectedName, setSelectedName] = useState("all")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
+  const [selectedWeek, setSelectedWeek] = useState<string>("all")
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear())
 
   // Amount Filters
   const [amountFrom, setAmountFrom] = useState("")
@@ -116,6 +118,21 @@ export const useHistoryData = () => {
     }, 500)
     return () => clearTimeout(timer)
   }, [amountTo])
+
+  // Synchronize filterYear with dateFrom or dateTo if user selects a date
+  useEffect(() => {
+    if (dateFrom) {
+      const y = parseInt(dateFrom.split("-")[0], 10)
+      if (!isNaN(y) && y !== filterYear) {
+        setFilterYear(y)
+      }
+    } else if (dateTo) {
+      const y = parseInt(dateTo.split("-")[0], 10)
+      if (!isNaN(y) && y !== filterYear) {
+        setFilterYear(y)
+      }
+    }
+  }, [dateFrom, dateTo, filterYear])
 
   // Fetch Master Dropdown Options
   const fetchMasterData = useCallback(async () => {
@@ -257,7 +274,7 @@ export const useHistoryData = () => {
       return
     }
 
-    const mappedVouchers = data
+    let mappedVouchers = data
       .map((row: any) => {
         if (currentRecordType === "Debit" && !row.voucher_no) return null
 
@@ -293,8 +310,17 @@ export const useHistoryData = () => {
       })
       .filter((voucher): voucher is VoucherData => Boolean(voucher))
 
+    if (selectedWeek !== "all") {
+      const weekNum = parseInt(selectedWeek, 10)
+      mappedVouchers = mappedVouchers.filter((voucher) => {
+        const pDate = voucher.dateOfPaymentProcess || voucher.timestamp
+        const wInfo = getCalendarWeekNumber(pDate)
+        return wInfo?.weekNumber === weekNum && (!filterYear || wInfo?.year === filterYear)
+      })
+    }
+
     setVouchers(mappedVouchers)
-  }, [])
+  }, [recordType, selectedWeek, filterYear])
 
   // Fetch Logic with automatic background loop
   const fetchRealHistoryData = useCallback(async () => {
@@ -415,8 +441,20 @@ export const useHistoryData = () => {
             q = q.eq("beneficiary_name", selectedName)
           }
         }
-        if (dateFrom) q = q.gte("date_of_payment", dateFrom)
-        if (dateTo) q = q.lte("date_of_payment", dateTo)
+        let effDateFrom = dateFrom
+        let effDateTo = dateTo
+        if (selectedWeek !== "all") {
+          const weekNum = parseInt(selectedWeek, 10)
+          const weekRange = getWeekDateRange(filterYear, weekNum)
+          if (!effDateFrom || weekRange.startDate > effDateFrom) {
+            effDateFrom = weekRange.startDate
+          }
+          if (!effDateTo || weekRange.endDate < effDateTo) {
+            effDateTo = weekRange.endDate
+          }
+        }
+        if (effDateFrom) q = q.gte("date_of_payment", effDateFrom)
+        if (effDateTo) q = q.lte("date_of_payment", effDateTo)
         if (debouncedAmountFrom) q = q.gte("amount", debouncedAmountFrom)
         if (debouncedAmountTo) q = q.lte("amount", debouncedAmountTo)
         return q
@@ -502,6 +540,8 @@ export const useHistoryData = () => {
     selectedName,
     dateFrom,
     dateTo,
+    selectedWeek,
+    filterYear,
     debouncedAmountFrom,
     debouncedAmountTo,
     processRealSupabaseData,
@@ -536,6 +576,7 @@ export const useHistoryData = () => {
     setSelectedName("all")
     setDateFrom("")
     setDateTo("")
+    setSelectedWeek("all")
     setAmountFrom("")
     setAmountTo("")
   }, [])
@@ -777,6 +818,10 @@ export const useHistoryData = () => {
     setDateFrom,
     dateTo,
     setDateTo,
+    selectedWeek,
+    setSelectedWeek,
+    filterYear,
+    setFilterYear,
     amountFrom,
     handleAmountChange,
     amountTo,

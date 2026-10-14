@@ -6,16 +6,20 @@ interface VoucherToolbarProps {
   recordType: "Debit" | "Credit" | "Transfer"
   setRecordType: (type: "Debit" | "Credit" | "Transfer") => void
   generateSummaryPDF: () => void
+  generatePDFDownload2?: () => void
   handleExportToExcel: () => void
   isExporting: boolean
+  isExportingPDF2?: boolean
 }
 
 export const VoucherToolbar: React.FC<VoucherToolbarProps> = ({
   recordType,
   setRecordType,
   generateSummaryPDF,
+  generatePDFDownload2,
   handleExportToExcel,
   isExporting,
+  isExportingPDF2 = false,
 }) => {
   return (
     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
@@ -65,8 +69,29 @@ export const VoucherToolbar: React.FC<VoucherToolbarProps> = ({
           className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 h-10 px-4 rounded-xl font-bold flex items-center gap-2 transition-all duration-200"
         >
           <FileText className="h-4 w-4" />
-          <span>PDF Download</span>
+          {/* Gaurav Sir */}
+          <span>PDF Download 1</span>
         </Button>
+
+        <Button
+          onClick={generatePDFDownload2}
+          disabled={isExportingPDF2}
+          variant="outline"
+          size="sm"
+          className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 h-10 px-4 rounded-xl font-bold flex items-center gap-2 transition-all duration-200"
+        >
+          {isExportingPDF2 ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          <span>{isExportingPDF2 ? "Exporting..." : "PDF Download 2"}</span>
+        </Button>
+
+
+
+
+
         <Button
           onClick={handleExportToExcel}
           disabled={isExporting}

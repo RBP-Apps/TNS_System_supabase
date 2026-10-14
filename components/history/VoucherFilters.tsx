@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { getWeekDateRange } from "@/lib/history-utils"
 import {
   Command,
   CommandEmpty,
@@ -133,6 +134,10 @@ interface VoucherFiltersProps {
   setAmountFrom: (v: string) => void
   amountTo: string
   setAmountTo: (v: string) => void
+  selectedWeek: string
+  setSelectedWeek: (v: string) => void
+  filterYear: number
+  setFilterYear: React.Dispatch<React.SetStateAction<number>>
   activeFiltersCount: number
   clearAllFilters: () => void
   uniqueNames: string[]
@@ -146,6 +151,7 @@ const SearchableSelect = ({
   value,
   onValueChange,
   options,
+  optionLabels,
   placeholder,
   allLabel,
   emptyMessage = "No results found."
@@ -153,6 +159,7 @@ const SearchableSelect = ({
   value: string,
   onValueChange: (v: string) => void,
   options: string[],
+  optionLabels?: Record<string, string>,
   placeholder: string,
   allLabel: string,
   emptyMessage?: string
@@ -169,7 +176,7 @@ const SearchableSelect = ({
           className="w-full justify-between h-10 text-xs sm:text-sm font-normal bg-white rounded-xl border-slate-200 hover:bg-slate-50 transition-colors"
         >
           <span className="truncate">
-            {value === "all" ? allLabel : value}
+            {value === "all" ? allLabel : (optionLabels?.[value] || value)}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-slate-400" />
         </Button>
@@ -199,7 +206,7 @@ const SearchableSelect = ({
               {options.map((option) => (
                 <CommandItem
                   key={option}
-                  value={option}
+                  value={optionLabels?.[option] || option}
                   onSelect={() => {
                     onValueChange(option)
                     setOpen(false)
@@ -212,7 +219,7 @@ const SearchableSelect = ({
                       value === option ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option}
+                  {optionLabels?.[option] || option}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -245,6 +252,10 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
   setAmountFrom,
   amountTo,
   setAmountTo,
+  selectedWeek,
+  setSelectedWeek,
+  filterYear,
+  setFilterYear,
   activeFiltersCount,
   clearAllFilters,
   uniqueNames,
@@ -253,6 +264,25 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
   uniquePurposes,
   uniqueTransactionTypes,
 }) => {
+  const weekOptions = React.useMemo(() => {
+    const list: { value: string; label: string }[] = []
+    for (let w = 1; w <= 53; w++) {
+      const range = getWeekDateRange(filterYear, w)
+      list.push({
+        value: String(w),
+        label: range.label,
+      })
+    }
+    return list
+  }, [filterYear])
+
+  const weekLabelsMap = React.useMemo(() => {
+    return weekOptions.reduce((acc, curr) => {
+      acc[curr.value] = curr.label
+      return acc
+    }, {} as Record<string, string>)
+  }, [weekOptions])
+
   return (
     <Card className="shadow-md border border-slate-100 rounded-2xl overflow-hidden">
       <CardHeader className="bg-blue-50/40 border-b border-blue-100/50  ">
@@ -368,6 +398,42 @@ const VoucherFilters: React.FC<VoucherFiltersProps> = memo(({
               />
             </div>
           )}
+
+          {/* Week Number Filter */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                Week Number
+              </label>
+              <div className="flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-200/60">
+                <button
+                  type="button"
+                  title="Previous Year"
+                  onClick={() => setFilterYear((prev) => prev - 1)}
+                  className="text-slate-400 hover:text-slate-700 p-0.5 rounded hover:bg-slate-200 transition-colors"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+                <span className="text-[11px] font-bold text-slate-600">{filterYear}</span>
+                <button
+                  type="button"
+                  title="Next Year"
+                  onClick={() => setFilterYear((prev) => prev + 1)}
+                  className="text-slate-400 hover:text-slate-700 p-0.5 rounded hover:bg-slate-200 transition-colors"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+            <SearchableSelect
+              value={selectedWeek}
+              onValueChange={setSelectedWeek}
+              options={weekOptions.map((o) => o.value)}
+              optionLabels={weekLabelsMap}
+              placeholder="Week Number"
+              allLabel="All Weeks"
+            />
+          </div>
 
           {/* Date From */}
           <div className="space-y-1.5">

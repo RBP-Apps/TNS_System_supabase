@@ -16,11 +16,13 @@ import EditVoucherModal from "@/components/history/EditVoucherModal"
 
 // Import utilities / exports
 import { formatDateForInput } from "@/lib/history-utils"
-import { downloadPDF, handleExportToExcel, generateSummaryPDF } from "@/lib/voucher-exports"
+import { downloadPDF, handleExportToExcel, generateSummaryPDF, generatePDFDownload2 } from "@/lib/voucher-exports"
+import { useState } from "react"
 
 export default function HistoryPage() {
   const router = useRouter()
   const historyProps = useHistoryData()
+  const [isExportingPDF2, setIsExportingPDF2] = useState(false)
 
   const {
     userRole,
@@ -54,6 +56,10 @@ export default function HistoryPage() {
     setDateFrom,
     dateTo,
     setDateTo,
+    selectedWeek,
+    setSelectedWeek,
+    filterYear,
+    setFilterYear,
     amountFrom,
     handleAmountChange,
     amountTo,
@@ -97,6 +103,7 @@ export default function HistoryPage() {
       selectedPurpose !== "all",
       selectedTransactionType !== "all",
       selectedName !== "all",
+      selectedWeek !== "all",
       dateFrom,
       dateTo,
       debouncedAmountFrom,
@@ -108,6 +115,7 @@ export default function HistoryPage() {
     selectedPurpose,
     selectedTransactionType,
     selectedName,
+    selectedWeek,
     dateFrom,
     dateTo,
     debouncedAmountFrom,
@@ -147,6 +155,25 @@ export default function HistoryPage() {
       debouncedAmountFrom,
       debouncedAmountTo,
       setIsRefetching,
+    })
+  }
+
+  const triggerExportPDFDownload2 = () => {
+    generatePDFDownload2({
+      recordType,
+      debouncedSearchTerm,
+      selectedCompany,
+      selectedProject,
+      selectedPurpose,
+      selectedTransactionType,
+      selectedName,
+      dateFrom,
+      dateTo,
+      debouncedAmountFrom,
+      debouncedAmountTo,
+      selectedWeek,
+      filterYear,
+      setIsExporting: setIsExportingPDF2,
     })
   }
 
@@ -190,6 +217,10 @@ export default function HistoryPage() {
         setAmountFrom={(val) => handleAmountChange("From", val)}
         amountTo={amountTo}
         setAmountTo={(val) => handleAmountChange("To", val)}
+        selectedWeek={selectedWeek}
+        setSelectedWeek={setSelectedWeek}
+        filterYear={filterYear}
+        setFilterYear={setFilterYear}
         activeFiltersCount={activeFiltersCount}
         clearAllFilters={clearAllFilters}
         uniqueNames={masterData.uniqueNames}
@@ -204,8 +235,10 @@ export default function HistoryPage() {
         recordType={recordType}
         setRecordType={setRecordType}
         generateSummaryPDF={triggerExportSummaryPDF}
+        generatePDFDownload2={triggerExportPDFDownload2}
         handleExportToExcel={triggerExportExcel}
         isExporting={isExporting}
+        isExportingPDF2={isExportingPDF2}
       />
 
       {/* Vouchers Table Card or Empty State */}
