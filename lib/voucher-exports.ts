@@ -1114,7 +1114,7 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
       activeFilterTags.push(`Amount: INR ${debouncedAmountFrom || "0"} – INR ${debouncedAmountTo || "Max"}`)
     }
 
-    // Build the 7 compulsory columns
+    // Build the columns
     const body: any[] = allData.map((d, index) => {
       const sNo = index + 1
 
@@ -1123,7 +1123,10 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
       const weekInfo = getCalendarWeekNumber(dateVal)
       const weekDisplay = weekInfo ? `Week ${weekInfo.weekNumber}` : "-"
 
-      // 3. Beneficiary Name
+      // 3. Company Name
+      const companyName = d.company_name || "-"
+
+      // 4. Beneficiary Name
       let beneficiary = ""
       if (recordType === "Debit") {
         beneficiary = d.beneficiary_name || d.beneficiary_ac_name || "-"
@@ -1133,7 +1136,7 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
         beneficiary = d.beneficiary_name || d.bank_ac_to || "-"
       }
 
-      // 4. Purpose
+      // 5. Purpose
       let purpose = ""
       if (recordType === "Transfer") {
         purpose = d.purpose || d.purpose_of_payment || "-"
@@ -1141,17 +1144,17 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
         purpose = d.purpose_of_payment || d.purpose || "-"
       }
 
-      // 5. Project
+      // 6. Project
       const project = d.project || "-"
 
-      // 6. Amount (₹)
+      // 7. Amount (₹)
       const numAmount = Number(d.amount) || 0
       const formattedAmount = numAmount.toLocaleString("en-IN", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
 
-      // 7. Transaction Type
+      // 8. Transaction Type
       let txType = d.transaction_type
       if (!txType) {
         txType = recordType === "Debit" ? "Payment" : recordType === "Credit" ? "Receipt" : "Contra"
@@ -1160,6 +1163,7 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
       return [
         sNo,
         weekDisplay,
+        companyName,
         beneficiary,
         purpose,
         project,
@@ -1179,7 +1183,7 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
       [
         {
           content: "TOTAL AMOUNT",
-          colSpan: 5,
+          colSpan: 6,
           styles: {
             fontStyle: "bold" as const,
             halign: "right" as const,
@@ -1218,6 +1222,7 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
         [
           "S. No.",
           "Week No.",
+          "Company Name",
           "Beneficiary Name",
           "Purpose",
           "Project",
@@ -1249,20 +1254,24 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 14, halign: "center" },
-        1: { cellWidth: 22, halign: "center" },
-        2: { cellWidth: 65, halign: "left" },
-        3: { cellWidth: 62, halign: "left" },
-        4: { cellWidth: 46, halign: "left" },
-        5: { cellWidth: 38, halign: "right", fontStyle: "bold" },
-        6: { cellWidth: 30, halign: "center" },
+        0: { cellWidth: 12, halign: "center" },
+        1: { cellWidth: 18, halign: "center" },
+        2: { cellWidth: 42, halign: "left" },
+        3: { cellWidth: 48, halign: "left" },
+        4: { cellWidth: 48, halign: "left" },
+        5: { cellWidth: 36, halign: "left" },
+        6: { cellWidth: 37, halign: "right", fontStyle: "bold" },
+        7: { cellWidth: 36, halign: "center" },
       },
       didDrawPage: (data) => {
         if (data.pageNumber === 1) {
           doc.setFont("helvetica", "bold")
           doc.setFontSize(15)
           doc.setTextColor(15, 23, 42)
-          doc.text(reportTitle, 10, 12)
+          const headerTitle = selectedCompany && selectedCompany !== "all"
+            ? `${reportTitle} — ${selectedCompany}`
+            : reportTitle
+          doc.text(headerTitle, 10, 12)
 
           doc.setFont("helvetica", "normal")
           doc.setFontSize(8)
@@ -1294,7 +1303,10 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
       doc.setFontSize(7.5)
       doc.setTextColor(100, 116, 139)
       doc.text(`Page ${i} of ${pageCount}`, pageWidth - 10, pageHeight - 6, { align: "right" })
-      doc.text(`TNS System • ${reportTitle}`, 10, pageHeight - 6)
+      const footerTitle = selectedCompany && selectedCompany !== "all"
+        ? `TNS System • ${reportTitle} (${selectedCompany})`
+        : `TNS System • ${reportTitle}`
+      doc.text(footerTitle, 10, pageHeight - 6)
     }
 
     const safeCat =
@@ -1303,8 +1315,11 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
         : recordType === "Credit"
         ? "Receipt_Vouchers"
         : "Contra"
+    const companySuffix = selectedCompany && selectedCompany !== "all"
+      ? `_${selectedCompany.replace(/[^a-zA-Z0-9_-]/g, "_")}`
+      : ""
     const weekSuffix = selectedWeek && selectedWeek !== "all" ? `_Week_${selectedWeek}` : ""
-    doc.save(`${safeCat}_Report_2${weekSuffix}_${new Date().toISOString().split("T")[0]}.pdf`)
+    doc.save(`${safeCat}_Report_2${companySuffix}${weekSuffix}_${new Date().toISOString().split("T")[0]}.pdf`)
   } catch (error) {
     console.error("PDF Download 2 Error:", error)
     alert("Failed to export PDF Download 2 report")
