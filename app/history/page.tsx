@@ -16,13 +16,14 @@ import EditVoucherModal from "@/components/history/EditVoucherModal"
 
 // Import utilities / exports
 import { formatDateForInput } from "@/lib/history-utils"
-import { downloadPDF, handleExportToExcel, generateSummaryPDF, generatePDFDownload2 } from "@/lib/voucher-exports"
+import { downloadPDF, handleExportToExcel, generateSummaryPDF, generatePDFDownload2, generatePDFDownload3 } from "@/lib/voucher-exports"
 import { useState } from "react"
 
 export default function HistoryPage() {
   const router = useRouter()
   const historyProps = useHistoryData()
   const [isExportingPDF2, setIsExportingPDF2] = useState(false)
+  const [isExportingPDF3, setIsExportingPDF3] = useState(false)
 
   const {
     userRole,
@@ -177,6 +178,25 @@ export default function HistoryPage() {
     })
   }
 
+  const triggerExportPDFDownload3 = () => {
+    generatePDFDownload3({
+      recordType,
+      debouncedSearchTerm,
+      selectedCompany,
+      selectedProject,
+      selectedPurpose,
+      selectedTransactionType,
+      selectedName,
+      dateFrom,
+      dateTo,
+      debouncedAmountFrom,
+      debouncedAmountTo,
+      selectedWeek,
+      filterYear,
+      setIsExporting: setIsExportingPDF3,
+    })
+  }
+
   // Full-page spinner only on very first load; subsequent fetches use inline indicator
   const hasLoaded = vouchers.length > 0 || !loading
   if (loading && !hasLoaded) {
@@ -236,9 +256,11 @@ export default function HistoryPage() {
         setRecordType={setRecordType}
         generateSummaryPDF={triggerExportSummaryPDF}
         generatePDFDownload2={triggerExportPDFDownload2}
+        generatePDFDownload3={triggerExportPDFDownload3}
         handleExportToExcel={triggerExportExcel}
         isExporting={isExporting}
         isExportingPDF2={isExportingPDF2}
+        isExportingPDF3={isExportingPDF3}
       />
 
       {/* Vouchers Table Card or Empty State */}

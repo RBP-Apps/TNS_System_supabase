@@ -78,6 +78,23 @@ export interface ExportPDFDownload2Options {
   setIsExporting?: (val: boolean) => void
 }
 
+export interface ExportPDFDownload3Options {
+  recordType: "Debit" | "Credit" | "Transfer"
+  debouncedSearchTerm: string
+  selectedCompany: string
+  selectedProject: string
+  selectedPurpose: string
+  selectedTransactionType: string
+  selectedName: string
+  dateFrom: string
+  dateTo: string
+  debouncedAmountFrom: string
+  debouncedAmountTo: string
+  selectedWeek?: string
+  filterYear?: number
+  setIsExporting?: (val: boolean) => void
+}
+
 export const downloadPDF = async (voucher: VoucherData) => {
   try {
     if (voucher.recordType === "Credit" || voucher.recordType === "Transfer" || !voucher.pdfLink) {
@@ -1323,6 +1340,373 @@ export const generatePDFDownload2 = async (options: ExportPDFDownload2Options) =
   } catch (error) {
     console.error("PDF Download 2 Error:", error)
     alert("Failed to export PDF Download 2 report")
+  } finally {
+    setIsExporting?.(false)
+  }
+}
+
+export const generatePDFDownload3 = async (options: ExportPDFDownload3Options) => {
+  const {
+    recordType,
+    debouncedSearchTerm,
+    selectedCompany,
+    selectedProject,
+    selectedPurpose,
+    selectedTransactionType,
+    selectedName,
+    dateFrom,
+    dateTo,
+    debouncedAmountFrom,
+    debouncedAmountTo,
+    selectedWeek,
+    filterYear,
+    setIsExporting,
+  } = options
+
+  try {
+    setIsExporting?.(true)
+    const { jsPDF } = await import("jspdf")
+    const { default: autoTable } = await import("jspdf-autotable")
+
+    const table: "History" | "Credit" | "Contra" =
+      recordType === "Debit" ? "History" : recordType === "Credit" ? "Credit" : "Contra"
+
+    let searchFilter: string | null = null
+    if (debouncedSearchTerm) {
+      if (table === "History") {
+        searchFilter = [
+          `voucher_no.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_name.ilike.%${debouncedSearchTerm}%`,
+          `project.ilike.%${debouncedSearchTerm}%`,
+          `purpose_of_payment.ilike.%${debouncedSearchTerm}%`,
+          `company_name.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+          `transaction_type.ilike.%${debouncedSearchTerm}%`,
+          `name.ilike.%${debouncedSearchTerm}%`,
+          `po_number.ilike.%${debouncedSearchTerm}%`,
+          `utr_number.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_ac_name.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_ac_number.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_bank_name.ilike.%${debouncedSearchTerm}%`,
+          `beneficiary_bank_ifsc.ilike.%${debouncedSearchTerm}%`,
+          `particulars.ilike.%${debouncedSearchTerm}%`,
+          `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+          `entry_done_by.ilike.%${debouncedSearchTerm}%`,
+          `checked_by.ilike.%${debouncedSearchTerm}%`,
+          `approved_by.ilike.%${debouncedSearchTerm}%`,
+        ].join(",")
+      } else if (table === "Credit") {
+        searchFilter = [
+          `beneficiary_name.ilike.%${debouncedSearchTerm}%`,
+          `company_name.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+          `purpose_of_payment.ilike.%${debouncedSearchTerm}%`,
+          `transaction_type.ilike.%${debouncedSearchTerm}%`,
+          `project.ilike.%${debouncedSearchTerm}%`,
+          `utr_number.ilike.%${debouncedSearchTerm}%`,
+          `particulars.ilike.%${debouncedSearchTerm}%`,
+          `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+          `entry_done_by.ilike.%${debouncedSearchTerm}%`,
+          `checked_by.ilike.%${debouncedSearchTerm}%`,
+        ].join(",")
+      } else if (table === "Contra") {
+        searchFilter = [
+          `company_name.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_from.ilike.%${debouncedSearchTerm}%`,
+          `purpose.ilike.%${debouncedSearchTerm}%`,
+          `transaction_type.ilike.%${debouncedSearchTerm}%`,
+          `utr_number.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_to.ilike.%${debouncedSearchTerm}%`,
+          `bank_ac_number_to.ilike.%${debouncedSearchTerm}%`,
+          `bank_name_to.ilike.%${debouncedSearchTerm}%`,
+          `ifsc_to.ilike.%${debouncedSearchTerm}%`,
+          `particulars.ilike.%${debouncedSearchTerm}%`,
+          `amount_in_words.ilike.%${debouncedSearchTerm}%`,
+          `approved_by.ilike.%${debouncedSearchTerm}%`,
+        ].join(",")
+      }
+    }
+
+    const activeYear = filterYear || (dateFrom ? parseInt(dateFrom.split("-")[0], 10) : new Date().getFullYear())
+    let effDateFrom = dateFrom
+    let effDateTo = dateTo
+
+    if (selectedWeek && selectedWeek !== "all") {
+      const weekNum = parseInt(selectedWeek, 10)
+      const weekRange = getWeekDateRange(activeYear, weekNum)
+      if (!effDateFrom || weekRange.startDate > effDateFrom) {
+        effDateFrom = weekRange.startDate
+      }
+      if (!effDateTo || weekRange.endDate < effDateTo) {
+        effDateTo = weekRange.endDate
+      }
+    }
+
+    let allData: any[] = []
+    let from = 0
+    const limit = 1000
+    let hasMore = true
+
+    while (hasMore) {
+      let query = supabase.from(table).select("*")
+      if (searchFilter) query = query.or(searchFilter)
+      if (selectedCompany !== "all") query = query.eq("company_name", selectedCompany)
+
+      if (table === "History" || table === "Credit") {
+        if (selectedProject !== "all") query = query.eq("project", selectedProject)
+        if (selectedPurpose !== "all") query = query.eq("purpose_of_payment", selectedPurpose)
+        if (selectedTransactionType !== "all") query = query.eq("transaction_type", selectedTransactionType)
+        if (selectedName !== "all") query = query.eq("beneficiary_name", selectedName)
+      } else if (table === "Contra") {
+        if (selectedPurpose !== "all") query = query.eq("purpose", selectedPurpose)
+        if (selectedTransactionType !== "all") query = query.eq("transaction_type", selectedTransactionType)
+        if (selectedName !== "all") query = query.eq("bank_ac_to", selectedName)
+      }
+
+      if (effDateFrom) query = query.gte("date_of_payment", effDateFrom)
+      if (effDateTo) query = query.lte("date_of_payment", effDateTo)
+      if (debouncedAmountFrom) query = query.gte("amount", debouncedAmountFrom)
+      if (debouncedAmountTo) query = query.lte("amount", debouncedAmountTo)
+
+      const orderColumn = table === "Contra" ? "created_at" : "created_date"
+      const { data, error } = await query
+        .order(orderColumn, { ascending: false })
+        .range(from, from + limit - 1)
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data]
+        if (data.length < limit) {
+          hasMore = false
+        } else {
+          from += limit
+        }
+      } else {
+        hasMore = false
+      }
+    }
+
+    // Secondary calendar-year week filtering verification
+    if (selectedWeek && selectedWeek !== "all") {
+      const weekNum = parseInt(selectedWeek, 10)
+      allData = allData.filter((d) => {
+        const dateVal = d.date_of_payment || d.created_date || d.created_at
+        const wInfo = getCalendarWeekNumber(dateVal)
+        return wInfo?.weekNumber === weekNum && (!activeYear || wInfo?.year === activeYear)
+      })
+    }
+
+    if (allData.length === 0) {
+      alert("No vouchers found matching the selected filters.")
+      return
+    }
+
+    // Group records by unique purpose
+    interface PurposeGroup {
+      purpose: string
+      companyNames: Set<string>
+      totalAmount: number
+    }
+
+    const purposeMap = new Map<string, PurposeGroup>()
+
+    for (const d of allData) {
+      const rawPurpose = (d.purpose_of_payment || d.purpose || "").trim()
+      const purpose = rawPurpose || "-"
+      const rawCompany = (d.company_name || "").trim()
+
+      let amount = 0
+      if (typeof d.amount === "number") {
+        amount = isNaN(d.amount) ? 0 : d.amount
+      } else if (typeof d.amount === "string") {
+        const cleaned = d.amount.replace(/,/g, "").trim()
+        const parsed = parseFloat(cleaned)
+        amount = isNaN(parsed) ? 0 : parsed
+      }
+
+      if (!purposeMap.has(purpose)) {
+        purposeMap.set(purpose, {
+          purpose,
+          companyNames: new Set(rawCompany ? [rawCompany] : []),
+          totalAmount: amount,
+        })
+      } else {
+        const group = purposeMap.get(purpose)!
+        if (rawCompany) {
+          group.companyNames.add(rawCompany)
+        }
+        group.totalAmount += amount
+      }
+    }
+
+    const groupedList = Array.from(purposeMap.values())
+
+    if (groupedList.length === 0) {
+      alert("No vouchers found matching the selected filters.")
+      return
+    }
+
+    // Create A4 Landscape PDF (matching PDF Download 1 layout)
+    const doc = new jsPDF("l", "mm", "a4")
+    const pageWidth = 297
+    const pageHeight = 210
+
+    const reportTitle =
+      recordType === "Debit"
+        ? "PAYMENT VOUCHERS SUMMARY REPORT"
+        : recordType === "Credit"
+        ? "RECEIPT VOUCHERS SUMMARY REPORT"
+        : "CONTRA SUMMARY REPORT"
+
+    const fromDateStr = dateFrom ? formatDate(dateFrom) : (effDateFrom ? formatDate(effDateFrom) : "Start")
+    const toDateStr = dateTo ? formatDate(dateTo) : (effDateTo ? formatDate(effDateTo) : "End")
+    const dateHeaderRange = `From Date: ${fromDateStr}     To Date: ${toDateStr}`
+
+    // Build the four columns
+    const body: any[] = groupedList.map((group, index) => {
+      const sNo = index + 1
+      const purpose = group.purpose
+      const companyName = group.companyNames.size > 0 ? Array.from(group.companyNames).join(", ") : "-"
+      const formattedAmount = Number.isInteger(group.totalAmount)
+        ? group.totalAmount.toLocaleString("en-IN")
+        : group.totalAmount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+
+      return [
+        sNo,
+        purpose,
+        companyName,
+        { content: formattedAmount, styles: { halign: "right" as const } },
+      ]
+    })
+
+    // Total Amount Calculation
+    const grandTotal = groupedList.reduce((sum, g) => sum + g.totalAmount, 0)
+    const formattedGrandTotal = Number.isInteger(grandTotal)
+      ? grandTotal.toLocaleString("en-IN")
+      : grandTotal.toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+
+    const themeStyles =
+      recordType === "Credit"
+        ? {
+            headFill: [249, 115, 22] as [number, number, number],
+            footFill: [254, 215, 170] as [number, number, number],
+            footText: [120, 53, 15] as [number, number, number],
+          }
+        : recordType === "Transfer"
+        ? {
+            headFill: [15, 118, 110] as [number, number, number],
+            footFill: [204, 251, 241] as [number, number, number],
+            footText: [15, 118, 110] as [number, number, number],
+          }
+        : {
+            headFill: [59, 130, 246] as [number, number, number],
+            footFill: [219, 234, 254] as [number, number, number],
+            footText: [30, 58, 138] as [number, number, number],
+          }
+
+    const foot: any[] = [
+      [
+        {
+          content: "TOTAL",
+          colSpan: 3,
+          styles: {
+            fontStyle: "bold" as const,
+            halign: "right" as const,
+            fillColor: themeStyles.footFill,
+            textColor: themeStyles.footText,
+            fontSize: 8.5,
+          },
+        },
+        {
+          content: formattedGrandTotal,
+          styles: {
+            fontStyle: "bold" as const,
+            halign: "right" as const,
+            fillColor: themeStyles.footFill,
+            textColor: themeStyles.footText,
+            fontSize: 8.5,
+          },
+        },
+      ],
+    ]
+
+    autoTable(doc, {
+      startY: 28,
+      margin: { top: 28, bottom: 15, left: 15, right: 15 },
+      head: [["S. NO.", "Purpose", "Company Name", "Total Amount"]],
+      body: body,
+      foot: foot,
+      showHead: "everyPage",
+      showFoot: "lastPage",
+      theme: "grid",
+      styles: {
+        fontSize: 8,
+        cellPadding: 2.5,
+        lineWidth: 0.1,
+        overflow: "linebreak",
+      },
+      headStyles: {
+        fillColor: themeStyles.headFill,
+        textColor: 255,
+        fontStyle: "bold",
+        fontSize: 8.5,
+      },
+      columnStyles: {
+        0: { cellWidth: 25, halign: "center" },
+        1: { cellWidth: 110, halign: "left" },
+        2: { cellWidth: 82, halign: "left" },
+        3: { cellWidth: 50, halign: "right" },
+      },
+      didDrawPage: () => {
+        // Draw the top header on each page (same typography and layout as PDF Download 1)
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(18)
+        doc.setTextColor(0, 0, 0)
+        const headerTitle =
+          selectedCompany && selectedCompany !== "all"
+            ? `${reportTitle} — ${selectedCompany}`
+            : reportTitle
+        doc.text(headerTitle, pageWidth / 2, 12, { align: "center" })
+
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(10)
+        doc.setTextColor(0, 0, 0)
+        doc.text(dateHeaderRange, pageWidth / 2, 19, { align: "center" })
+      },
+    })
+
+    // Add page numbers on all pages (matching PDF Download 1 style)
+    const pageCount = (doc.internal as any).getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.setTextColor(0, 0, 0)
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth - 15, 10, { align: "right" })
+    }
+
+    const safeCat =
+      recordType === "Debit"
+        ? "Payment_Vouchers"
+        : recordType === "Credit"
+        ? "Receipt_Vouchers"
+        : "Contra"
+    const companySuffix =
+      selectedCompany && selectedCompany !== "all"
+        ? `_${selectedCompany.replace(/[^a-zA-Z0-9_-]/g, "_")}`
+        : ""
+    const weekSuffix = selectedWeek && selectedWeek !== "all" ? `_Week_${selectedWeek}` : ""
+    doc.save(`${safeCat}_Purpose_Summary_3${companySuffix}${weekSuffix}_${new Date().toISOString().split("T")[0]}.pdf`)
+  } catch (error) {
+    console.error("PDF Download 3 Error:", error)
+    alert("Failed to export PDF Download 3 report")
   } finally {
     setIsExporting?.(false)
   }
