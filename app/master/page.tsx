@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Search, X, Edit, Trash2, Plus, ArrowLeft, Database, Loader2, CheckCircle2 } from "lucide-react";
+import { Search, X, Edit, Trash2, Plus, ArrowLeft, Database, Loader2, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
 import supabase from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import {
 interface MasterRecord {
   id: number;
   company_name: string;
+  transaction_type?: string;
   project: string;
   bank_ac_from: string;
   payment_from_company: string;
@@ -70,6 +72,7 @@ export default function MasterDataManagement() {
 
   const [formData, setFormData] = useState({
     company_name: "",
+    transaction_type: "",
     project: "",
     bank_ac_from: "",
     payment_from_company: ""
@@ -528,6 +531,85 @@ export default function MasterDataManagement() {
     );
   });
 
+  const exportToExcel = (type: "master" | "beneficiary" | "contra") => {
+    try {
+      let dataToExport: any[] = [];
+      let filename = "";
+      let sheetName = "";
+
+      if (type === "master") {
+        const source = filteredData.length > 0 ? filteredData : masterData;
+        if (source.length === 0) {
+          alert("No Master Records to export");
+          return;
+        }
+        dataToExport = source.map((item, index) => ({
+          "S.No": index + 1,
+          "Company Name": item.company_name || "-",
+          "Project": item.project || "-",
+          "Bank Account (From)": item.bank_ac_from || "-",
+          "Payment From Company": item.payment_from_company || "-",
+          "Created Date": item.created_at ? new Date(item.created_at).toLocaleDateString("en-IN") : "-"
+        }));
+        filename = `Master_Records_${new Date().toISOString().split("T")[0]}.xlsx`;
+        sheetName = "Master Records";
+      } else if (type === "beneficiary") {
+        const source = filteredBeneficiaryData.length > 0 ? filteredBeneficiaryData : beneficiaryData;
+        if (source.length === 0) {
+          alert("No Beneficiary Records to export");
+          return;
+        }
+        dataToExport = source.map((item, index) => ({
+          "S.No": index + 1,
+          "Beneficiary Name": item.beneficiary_name || "-",
+          "Account Number": item.beneficiary_account_number || "-",
+          "Bank Name": item.beneficiary_bank_name || "-",
+          "IFSC": item.beneficiary_bank_ifsc || "-",
+          "Company": item.company_name || "-",
+          "WhatsApp": item.whatsapp_no || "-",
+          "Email": item.email_id || "-",
+          "Created Date": item.created_at ? new Date(item.created_at).toLocaleDateString("en-IN") : "-"
+        }));
+        filename = `Beneficiary_Records_${new Date().toISOString().split("T")[0]}.xlsx`;
+        sheetName = "Beneficiary Records";
+      } else if (type === "contra") {
+        const source = filteredContraData.length > 0 ? filteredContraData : contraData;
+        if (source.length === 0) {
+          alert("No Contra Records to export");
+          return;
+        }
+        dataToExport = source.map((item, index) => ({
+          "S.No": index + 1,
+          "Company Name": item.company_name || "-",
+          "Bank Name": item.bank_name || "-",
+          "Account Number": item.account_no || "-",
+          "IFSC Code": item.ifsc_code || "-",
+          "Created Date": item.created_at ? new Date(item.created_at).toLocaleDateString("en-IN") : "-"
+        }));
+        filename = `Contra_Master_${new Date().toISOString().split("T")[0]}.xlsx`;
+        sheetName = "Contra Master";
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+      const maxWidths = dataToExport.reduce((acc: any, row: any) => {
+        Object.keys(row).forEach((key, i) => {
+          const value = String(row[key] || "");
+          acc[i] = Math.max(acc[i] || 0, value.length, key.length);
+        });
+        return acc;
+      }, []);
+      worksheet["!cols"] = maxWidths.map((w: number) => ({ wch: Math.min(Math.max(w + 3, 10), 50) }));
+
+      XLSX.writeFile(workbook, filename);
+    } catch (error) {
+      console.error("Excel Export Error:", error);
+      alert("Failed to export Excel file");
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
       {/* Search + Add Record */}
@@ -596,6 +678,20 @@ export default function MasterDataManagement() {
       {/* Main Table */}
       {activeTab === "master" ? (
       <Card className="shadow-md overflow-hidden border-none">
+        <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-800">Master Records</span>
+            <Badge variant="secondary" className="bg-slate-200/70 text-slate-700">{filteredData.length} Records</Badge>
+          </div>
+          <Button
+            onClick={() => exportToExcel("master")}
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-2 shadow-sm transition-all duration-200"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Export Excel</span>
+          </Button>
+        </div>
         <CardContent className="p-0">
           <Table wrapperClassName="max-h-[70vh] overflow-auto">
             <TableHeader className="sticky top-0 z-50 bg-white">
@@ -682,6 +778,20 @@ export default function MasterDataManagement() {
       </Card>
       ) : activeTab === "beneficiary" ? (
         <Card className="shadow-md overflow-hidden border-none">
+          <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-800">Beneficiary Records</span>
+              <Badge variant="secondary" className="bg-slate-200/70 text-slate-700">{filteredBeneficiaryData.length} Records</Badge>
+            </div>
+            <Button
+              onClick={() => exportToExcel("beneficiary")}
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-2 shadow-sm transition-all duration-200"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Export Excel</span>
+            </Button>
+          </div>
           <CardContent className="p-0">
             <Table wrapperClassName="max-h-[70vh] overflow-auto">
               <TableHeader className="sticky top-0 z-50 bg-white">
@@ -745,6 +855,20 @@ export default function MasterDataManagement() {
         </Card>
       ) : (
         <Card className="shadow-md overflow-hidden border-none">
+          <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-800">Contra Master</span>
+              <Badge variant="secondary" className="bg-slate-200/70 text-slate-700">{filteredContraData.length} Records</Badge>
+            </div>
+            <Button
+              onClick={() => exportToExcel("contra")}
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-2 shadow-sm transition-all duration-200"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Export Excel</span>
+            </Button>
+          </div>
           <CardContent className="p-0">
             <Table wrapperClassName="max-h-[70vh] overflow-auto">
               <TableHeader className="sticky top-0 z-50 bg-white">
