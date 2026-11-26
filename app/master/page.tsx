@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Search, X, Edit, Trash2, Plus, ArrowLeft, Database, Loader2, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import { Search, X, Edit, Trash2, Plus, ArrowLeft, Database, Loader2, CheckCircle2, FileSpreadsheet, Calendar } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
 import supabase from "../../lib/supabase";
@@ -69,6 +69,8 @@ export default function MasterDataManagement() {
   const [editContraId, setEditContraId] = useState<number | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [formData, setFormData] = useState({
     company_name: "",
@@ -497,20 +499,41 @@ export default function MasterDataManagement() {
     }
   };
 
+  const isWithinDateRange = (createdAt?: string) => {
+    if (!dateFrom && !dateTo) return true;
+    if (!createdAt) return false;
+    try {
+      const d = new Date(createdAt);
+      if (isNaN(d.getTime())) return false;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const itemDate = `${year}-${month}-${day}`;
+
+      if (dateFrom && itemDate < dateFrom) return false;
+      if (dateTo && itemDate > dateTo) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const filteredData = masterData.filter(item => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = !searchTerm || (
       item.company_name?.toLowerCase().includes(searchLower) ||
       item.transaction_type?.toLowerCase().includes(searchLower) ||
       item.project?.toLowerCase().includes(searchLower) ||
       item.bank_ac_from?.toLowerCase().includes(searchLower) ||
       item.payment_from_company?.toLowerCase().includes(searchLower)
     );
+    const matchesDate = isWithinDateRange(item.created_at);
+    return matchesSearch && matchesDate;
   });
 
   const filteredBeneficiaryData = beneficiaryData.filter((item: BeneficiaryRecord) => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = !searchTerm || (
       item.beneficiary_name?.toLowerCase().includes(searchLower) ||
       item.beneficiary_account_number?.toLowerCase().includes(searchLower) ||
       item.beneficiary_bank_name?.toLowerCase().includes(searchLower) ||
@@ -519,16 +542,20 @@ export default function MasterDataManagement() {
       item.whatsapp_no?.toLowerCase().includes(searchLower) ||
       item.email_id?.toLowerCase().includes(searchLower)
     );
+    const matchesDate = isWithinDateRange(item.created_at);
+    return matchesSearch && matchesDate;
   });
 
   const filteredContraData = contraData.filter((item: ContraRecord) => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = !searchTerm || (
       item.company_name?.toLowerCase().includes(searchLower) ||
       item.bank_name?.toLowerCase().includes(searchLower) ||
       item.account_no?.toLowerCase().includes(searchLower) ||
       item.ifsc_code?.toLowerCase().includes(searchLower)
     );
+    const matchesDate = isWithinDateRange(item.created_at);
+    return matchesSearch && matchesDate;
   });
 
   const exportToExcel = (type: "master" | "beneficiary" | "contra") => {
@@ -652,27 +679,70 @@ export default function MasterDataManagement() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <Button
-          variant={activeTab === "master" ? "default" : "outline"}
-          onClick={() => setActiveTab("master")}
-        >
-          Master Records
-        </Button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={activeTab === "master" ? "default" : "outline"}
+            onClick={() => setActiveTab("master")}
+          >
+            Master Records
+          </Button>
 
-        <Button
-          variant={activeTab === "beneficiary" ? "default" : "outline"}
-          onClick={() => setActiveTab("beneficiary")}
-        >
-          Beneficiary Records
-        </Button>
+          <Button
+            variant={activeTab === "beneficiary" ? "default" : "outline"}
+            onClick={() => setActiveTab("beneficiary")}
+          >
+            Beneficiary Records
+          </Button>
 
-        <Button
-          variant={activeTab === "contra" ? "default" : "outline"}
-          onClick={() => setActiveTab("contra")}
-        >
-          Contra Master
-        </Button>
+          <Button
+            variant={activeTab === "contra" ? "default" : "outline"}
+            onClick={() => setActiveTab("contra")}
+          >
+            Contra Master
+          </Button>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200/80">
+          <div className="flex items-center gap-1.5 px-1.5 text-slate-500">
+            <Calendar className="h-4 w-4 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-600">Date:</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 font-medium">From</span>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-8 text-xs w-32 sm:w-36 bg-white border-slate-200 rounded-lg cursor-pointer"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500 font-medium">To</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-8 text-xs w-32 sm:w-36 bg-white border-slate-200 rounded-lg cursor-pointer"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDateFrom("");
+                setDateTo("");
+              }}
+              className="h-8 px-2 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+              title="Clear date filter"
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Main Table */}
